@@ -39,13 +39,11 @@ $jenisSuratList = JenisSuratService::getAll();
     
     <div class="flex-1 lg:ml-64">
         <main class="p-6 lg:p-8">
-            <!-- Header -->
             <div class="mb-6">
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">Manajemen Surat</h1>
                 <p class="text-gray-600">Kelola semua surat masuk, keluar, dan proposal</p>
             </div>
             
-            <!-- Actions & Filters -->
             <div class="bg-white rounded-lg shadow p-4 mb-6">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div class="flex flex-col sm:flex-row gap-2">
@@ -55,14 +53,12 @@ $jenisSuratList = JenisSuratService::getAll();
                     </div>
                     
                     <form method="GET" class="flex flex-col sm:flex-row gap-2">
-                        <!-- Search -->
                         <input type="text" 
                                name="search" 
                                value="<?= htmlspecialchars($filters['search']) ?>"
                                placeholder="Cari nomor surat, perihal..." 
                                class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         
-                        <!-- Jenis Filter -->
                         <select name="jenis" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                             <option value="">Semua Jenis</option>
                             <?php foreach ($jenisSuratList as $jenis): ?>
@@ -72,7 +68,6 @@ $jenisSuratList = JenisSuratService::getAll();
                             <?php endforeach; ?>
                         </select>
                         
-                        <!-- Status Filter -->
                         <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                             <option value="">Semua Status</option>
                             <option value="baru" <?= $filters['status_surat'] == 'baru' ? 'selected' : '' ?>>Baru</option>
@@ -94,7 +89,6 @@ $jenisSuratList = JenisSuratService::getAll();
                 </div>
             </div>
             
-            <!-- Table -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -178,7 +172,6 @@ $jenisSuratList = JenisSuratService::getAll();
                     </table>
                 </div>
                 
-                <!-- Pagination -->
                 <?php if ($pagination->hasPages()): ?>
                 <div class="border-t border-gray-200">
                     <?= $pagination->render('surat.php', ['jenis' => $filters['id_jenis'], 'status' => $filters['status_surat'], 'search' => $filters['search']]) ?>
@@ -191,7 +184,6 @@ $jenisSuratList = JenisSuratService::getAll();
     </div>
 </div>
 
-<!-- Modal Add/Edit Surat -->
 <div id="suratModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -199,12 +191,11 @@ $jenisSuratList = JenisSuratService::getAll();
                 <h3 id="modalTitle" class="text-lg font-semibold text-gray-800">Tambah Surat</h3>
             </div>
             
-            <form id="suratForm" method="POST" enctype="multipart/form-data" action="modules/surat/surat_handler.php">
+            <form id="suratForm" method="POST" enctype="multipart/form-data" action="<?php echo BASE_URL; ?>/../modules/surat/surat_handler.php">
                 <input type="hidden" name="action" id="formAction" value="create">
                 <input type="hidden" name="id" id="suratId">
                 
                 <div class="px-6 py-4 space-y-4">
-                    <!-- Jenis Surat -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Surat *</label>
                         <select name="id_jenis" id="id_jenis" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -216,14 +207,12 @@ $jenisSuratList = JenisSuratService::getAll();
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Nomor Surat -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Surat *</label>
                             <input type="text" name="nomor_surat" id="nomor_surat" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         
-                        <!-- Tanggal Surat -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Surat *</label>
                             <input type="date" name="tanggal_surat" id="tanggal_surat" required 
@@ -231,7 +220,6 @@ $jenisSuratList = JenisSuratService::getAll();
                         </div>
                     </div>
                     
-                    <!-- Tanggal Diterima -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Diterima (opsional)</label>
                         <input type="date" name="tanggal_diterima" id="tanggal_diterima" 
@@ -239,14 +227,12 @@ $jenisSuratList = JenisSuratService::getAll();
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Dari Instansi -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Dari Instansi</label>
                             <input type="text" name="dari_instansi" id="dari_instansi" 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         
-                        <!-- Ke Instansi -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Ke Instansi</label>
                             <input type="text" name="ke_instansi" id="ke_instansi" 
@@ -254,21 +240,18 @@ $jenisSuratList = JenisSuratService::getAll();
                         </div>
                     </div>
                     
-                    <!-- Alamat Surat -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Alamat Surat *</label>
                         <textarea name="alamat_surat" id="alamat_surat" required rows="2"
                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
                     
-                    <!-- Perihal -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Perihal *</label>
                         <textarea name="perihal" id="perihal" required rows="3"
                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
                     
-                    <!-- Lampiran File -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran File (PDF, JPG, PNG - Max 5MB)</label>
                         <input type="file" name="lampiran_file" id="lampiran_file" 
@@ -323,11 +306,12 @@ function closeModal() {
     document.getElementById('suratModal').classList.add('hidden');
 }
 
+// PERBAIKAN: action Javascript juga diarahkan ke ../modules/surat/surat_handler.php
 function arsipkanSurat(id) {
     confirmAction('Arsipkan surat ini?', function() {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'modules/surat/surat_handler.php';
+        form.action = '../modules/surat/surat_handler.php'; // Updated path
         
         const actionInput = document.createElement('input');
         actionInput.type = 'hidden';
@@ -350,7 +334,7 @@ function deleteSurat(id) {
     confirmDelete(function() {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'modules/surat/surat_handler.php';
+        form.action = '../modules/surat/surat_handler.php'; // Updated path
         
         const actionInput = document.createElement('input');
         actionInput.type = 'hidden';
@@ -369,7 +353,6 @@ function deleteSurat(id) {
     }, 'Surat ini');
 }
 
-// Close modal on escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeModal();

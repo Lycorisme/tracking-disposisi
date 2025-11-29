@@ -45,7 +45,10 @@ class SuratService {
         
         // Search
         if (!empty($filters['search'])) {
-            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.dari_instansi LIKE ? OR s.ke_instansi LIKE ?)";
+            $query .= " AND (s.nomor_surat LIKE ? 
+                        OR s.perihal LIKE ? 
+                        OR s.dari_instansi LIKE ? 
+                        OR s.ke_instansi LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params[] = $searchTerm;
             $params[] = $searchTerm;
@@ -99,7 +102,10 @@ class SuratService {
         }
         
         if (!empty($filters['search'])) {
-            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.dari_instansi LIKE ? OR s.ke_instansi LIKE ?)";
+            $query .= " AND (s.nomor_surat LIKE ? 
+                        OR s.perihal LIKE ? 
+                        OR s.dari_instansi LIKE ? 
+                        OR s.ke_instansi LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params[] = $searchTerm;
             $params[] = $searchTerm;
@@ -118,7 +124,9 @@ class SuratService {
     
     // Get surat by ID
     public static function getById($id) {
-        $query = "SELECT s.*, js.nama_jenis, u.nama_lengkap as dibuat_oleh_nama, u.email as dibuat_oleh_email
+        $query = "SELECT s.*, js.nama_jenis, 
+                         u.nama_lengkap as dibuat_oleh_nama, 
+                         u.email as dibuat_oleh_email
                   FROM surat s
                   JOIN jenis_surat js ON s.id_jenis = js.id
                   JOIN users u ON s.dibuat_oleh = u.id
@@ -130,9 +138,18 @@ class SuratService {
     // Create new surat
     public static function create($data) {
         $query = "INSERT INTO surat (
-                    id_jenis, nomor_agenda, nomor_surat, tanggal_surat, tanggal_diterima,
-                    dari_instansi, ke_instansi, alamat_surat, perihal, lampiran_file,
-                    status_surat, dibuat_oleh
+                    id_jenis, 
+                    nomor_agenda, 
+                    nomor_surat, 
+                    tanggal_surat, 
+                    tanggal_diterima,
+                    dari_instansi, 
+                    ke_instansi, 
+                    alamat_surat, 
+                    perihal, 
+                    lampiran_file,
+                    status_surat, 
+                    dibuat_oleh
                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $params = [
@@ -150,10 +167,11 @@ class SuratService {
             $data['dibuat_oleh']
         ];
         
+        // 12 parameter -> 12 karakter type
         $types = 'isssssssssis';
         
         $result = dbExecute($query, $params, $types);
-        return $result['insert_id'];
+        return $result['insert_id'] ?? null;
     }
     
     // Update surat
@@ -185,7 +203,8 @@ class SuratService {
             $id
         ];
         
-        $types = 'issssssssi';
+        // 11 parameter -> 11 type
+        $types = 'isssssssssi';
         
         return dbExecute($query, $params, $types);
     }
@@ -209,7 +228,9 @@ class SuratService {
         // Total surat by jenis
         $query = "SELECT js.nama_jenis, COUNT(s.id) as total
                   FROM jenis_surat js
-                  LEFT JOIN surat s ON js.id = s.id_jenis AND s.status_surat != 'arsip'
+                  LEFT JOIN surat s 
+                    ON js.id = s.id_jenis 
+                   AND s.status_surat != 'arsip'
                   GROUP BY js.id, js.nama_jenis";
         $stats['by_jenis'] = dbSelect($query);
         
@@ -230,7 +251,9 @@ class SuratService {
         $stats['recent'] = dbSelect($query);
         
         // Total archived
-        $query = "SELECT COUNT(*) as total FROM surat WHERE status_surat = 'arsip'";
+        $query = "SELECT COUNT(*) as total 
+                  FROM surat 
+                  WHERE status_surat = 'arsip'";
         $result = dbSelectOne($query);
         $stats['total_arsip'] = $result['total'] ?? 0;
         
@@ -252,7 +275,9 @@ class SuratService {
     
     // Count arsip
     public static function countArsip() {
-        $query = "SELECT COUNT(*) as total FROM surat WHERE status_surat = 'arsip'";
+        $query = "SELECT COUNT(*) as total 
+                  FROM surat 
+                  WHERE status_surat = 'arsip'";
         $result = dbSelectOne($query);
         return $result['total'] ?? 0;
     }
