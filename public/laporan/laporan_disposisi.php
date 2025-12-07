@@ -66,9 +66,11 @@ $avgResponseHours = $respondedCount > 0 ? round($totalResponseTime / $respondedC
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">Laporan Disposisi</h1>
                     <p class="text-gray-600">Periode: <?= formatTanggal($tanggalDari) ?> - <?= formatTanggal($tanggalSampai) ?></p>
                 </div>
-                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg print:hidden">
-                    <i class="fas fa-print mr-2"></i>Cetak
-                </button>
+                <a href="laporan_disposisi_pdf.php?tanggal_dari=<?= $tanggalDari ?>&tanggal_sampai=<?= $tanggalSampai ?>" 
+                   target="_blank"
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i>Cetak PDF
+                </a>
             </div>
             
             <div class="bg-white rounded-lg shadow p-4 mb-6 print:hidden">
@@ -136,11 +138,11 @@ $avgResponseHours = $respondedCount > 0 ? round($totalResponseTime / $respondedC
                                 <tr>
                                     <td class="px-4 py-2 text-sm text-gray-900"><?= $index + 1 ?></td>
                                     <td class="px-4 py-2 text-sm font-medium text-gray-900">
-                                        <?= $disp['nomor_agenda'] ?>
-                                        <div class="text-xs text-gray-500"><?= truncate($disp['perihal'], 30) ?></div>
+                                        <?= htmlspecialchars($disp['nomor_agenda']) ?>
+                                        <div class="text-xs text-gray-500"><?= htmlspecialchars(truncate($disp['perihal'], 30)) ?></div>
                                     </td>
-                                    <td class="px-4 py-2 text-sm text-gray-700"><?= $disp['dari_user_nama'] ?></td>
-                                    <td class="px-4 py-2 text-sm text-gray-700"><?= $disp['ke_user_nama'] ?></td>
+                                    <td class="px-4 py-2 text-sm text-gray-700"><?= htmlspecialchars($disp['dari_user_nama']) ?></td>
+                                    <td class="px-4 py-2 text-sm text-gray-700"><?= htmlspecialchars($disp['ke_user_nama']) ?></td>
                                     <td class="px-4 py-2 text-sm text-gray-700"><?= formatDateTime($disp['tanggal_disposisi']) ?></td>
                                     <td class="px-4 py-2 text-sm text-gray-700">
                                         <?= $disp['tanggal_respon'] ? formatDateTime($disp['tanggal_respon']) : '-' ?>

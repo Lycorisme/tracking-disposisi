@@ -57,9 +57,11 @@ foreach ($logList as $log) {
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">Log Aktivitas</h1>
                     <p class="text-gray-600">Periode: <?= formatTanggal($tanggalDari) ?> - <?= formatTanggal($tanggalSampai) ?></p>
                 </div>
-                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg print:hidden">
-                    <i class="fas fa-print mr-2"></i>Cetak
-                </button>
+                <a href="laporan_aktivitas_pdf.php?tanggal_dari=<?= $tanggalDari ?>&tanggal_sampai=<?= $tanggalSampai ?><?= !empty($userId) ? '&user_id=' . $userId : '' ?>" 
+                   target="_blank"
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i>Cetak PDF
+                </a>
             </div>
             
             <div class="bg-white rounded-lg shadow p-4 mb-6 print:hidden">
@@ -78,7 +80,7 @@ foreach ($logList as $log) {
                             <option value="">Semua User</option>
                             <?php foreach ($userList as $u): ?>
                             <option value="<?= $u['id'] ?>" <?= $userId == $u['id'] ? 'selected' : '' ?>>
-                                <?= $u['nama_lengkap'] ?>
+                                <?= htmlspecialchars($u['nama_lengkap']) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
@@ -128,8 +130,8 @@ foreach ($logList as $log) {
                                         <?= formatDateTime($log['created_at']) ?>
                                     </td>
                                     <td class="px-4 py-2 text-sm">
-                                        <div class="font-medium text-gray-900"><?= $log['nama_lengkap'] ?></div>
-                                        <div class="text-xs text-gray-500"><?= $log['email'] ?></div>
+                                        <div class="font-medium text-gray-900"><?= htmlspecialchars($log['nama_lengkap']) ?></div>
+                                        <div class="text-xs text-gray-500"><?= htmlspecialchars($log['email']) ?></div>
                                     </td>
                                     <td class="px-4 py-2 text-sm">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -137,7 +139,7 @@ foreach ($logList as $log) {
                                         </span>
                                     </td>
                                     <td class="px-4 py-2 text-sm text-gray-700">
-                                        <?= $log['keterangan'] ?? '-' ?>
+                                        <?= htmlspecialchars($log['keterangan'] ?? '-') ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>

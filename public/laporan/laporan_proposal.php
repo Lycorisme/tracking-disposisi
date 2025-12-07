@@ -1,5 +1,5 @@
 <?php
-// public/laporan/laporan_proposal.php - Copy from surat_keluar and adjust for id_jenis = 3
+// public/laporan/laporan_proposal.php
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -43,9 +43,11 @@ foreach ($suratList as $surat) {
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">Laporan Proposal</h1>
                     <p class="text-gray-600">Periode: <?= formatTanggal($tanggalDari) ?> - <?= formatTanggal($tanggalSampai) ?></p>
                 </div>
-                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg print:hidden">
-                    <i class="fas fa-print mr-2"></i>Cetak
-                </button>
+                <a href="laporan_proposal_pdf.php?tanggal_dari=<?= $tanggalDari ?>&tanggal_sampai=<?= $tanggalSampai ?>" 
+                   target="_blank"
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i>Cetak PDF
+                </a>
             </div>
             
             <div class="bg-white rounded-lg shadow p-4 mb-6 print:hidden">
@@ -111,9 +113,9 @@ foreach ($suratList as $surat) {
                                 <?php foreach ($suratList as $index => $surat): ?>
                                 <tr>
                                     <td class="px-4 py-2 text-sm text-gray-900"><?= $index + 1 ?></td>
-                                    <td class="px-4 py-2 text-sm font-medium text-gray-900"><?= $surat['nomor_agenda'] ?></td>
-                                    <td class="px-4 py-2 text-sm text-gray-700"><?= $surat['dari_instansi'] ?? '-' ?></td>
-                                    <td class="px-4 py-2 text-sm text-gray-700"><?= truncate($surat['perihal'], 50) ?></td>
+                                    <td class="px-4 py-2 text-sm font-medium text-gray-900"><?= htmlspecialchars($surat['nomor_agenda']) ?></td>
+                                    <td class="px-4 py-2 text-sm text-gray-700"><?= htmlspecialchars($surat['dari_instansi'] ?? '-') ?></td>
+                                    <td class="px-4 py-2 text-sm text-gray-700"><?= htmlspecialchars(truncate($surat['perihal'], 50)) ?></td>
                                     <td class="px-4 py-2 text-sm text-gray-700"><?= formatTanggal($surat['tanggal_surat']) ?></td>
                                     <td class="px-4 py-2 text-sm">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full <?= getStatusBadge($surat['status_surat']) ?>">
