@@ -39,7 +39,7 @@ if (!$settings) {
                 <div class="bg-white rounded-lg shadow mb-6">
                     <div class="border-b border-gray-200">
                         <nav class="flex -mb-px" aria-label="Tabs">
-                            <button type="button" onclick="showTab('aplikasi')" id="tab-aplikasi" class="tab-button border-b-2 border-blue-600 py-4 px-6 text-sm font-medium text-blue-600">
+                            <button type="button" onclick="showTab('aplikasi')" id="tab-aplikasi" class="tab-button border-b-2 border-primary-600 py-4 px-6 text-sm font-medium text-primary-600">
                                 <i class="fas fa-cog mr-2"></i>Aplikasi
                             </button>
                             <button type="button" onclick="showTab('instansi')" id="tab-instansi" class="tab-button border-b-2 border-transparent py-4 px-6 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
@@ -58,15 +58,45 @@ if (!$settings) {
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Nama Aplikasi *</label>
                                 <input type="text" name="app_name" value="<?= htmlspecialchars($settings['app_name']) ?>" required
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                             </div>
                             
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Deskripsi Aplikasi</label>
                                 <textarea name="app_description" rows="2"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"><?= htmlspecialchars($settings['app_description']) ?></textarea>
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"><?= htmlspecialchars($settings['app_description']) ?></textarea>
                             </div>
                             
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Tema Warna Aplikasi</label>
+                                <div class="flex flex-wrap gap-4">
+                                    <?php
+                                    $colors = [
+                                        'blue' => 'bg-blue-600',
+                                        'indigo' => 'bg-indigo-600',
+                                        'red' => 'bg-red-600',
+                                        'emerald' => 'bg-emerald-600',
+                                        'orange' => 'bg-orange-600',
+                                        'purple' => 'bg-purple-600',
+                                        'cyan' => 'bg-cyan-600',
+                                        'slate' => 'bg-slate-600'
+                                    ];
+                                    $currentTheme = $settings['theme_color'] ?? 'blue';
+                                    ?>
+                                    
+                                    <?php foreach($colors as $name => $bgClass): ?>
+                                    <label class="cursor-pointer group relative">
+                                        <input type="radio" name="theme_color" value="<?= $name ?>" class="peer sr-only" <?= $currentTheme == $name ? 'checked' : '' ?>>
+                                        <div class="w-10 h-10 rounded-full <?= $bgClass ?> peer-checked:ring-4 peer-checked:ring-offset-2 peer-checked:ring-gray-300 transition-all shadow-sm hover:scale-110 flex items-center justify-center text-white">
+                                            <i class="fas fa-check opacity-0 peer-checked:opacity-100"></i>
+                                        </div>
+                                        <span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity capitalize"><?= $name ?></span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">Warna ini akan diterapkan pada sidebar, tombol, dan link aktif. (Perlu refresh halaman setelah simpan)</p>
+                            </div>
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Logo Aplikasi</label>
                                 <div id="current_app_logo_container">
@@ -77,7 +107,7 @@ if (!$settings) {
                                     <?php endif; ?>
                                 </div>
                                 <input type="file" name="app_logo" accept=".png,.jpg,.jpeg,.svg" id="app_logo_input"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                                 <p class="text-xs text-gray-500 mt-1">Format: PNG, JPG, SVG (Max 2MB)</p>
                                 <div id="app_logo_preview" class="mt-2"></div>
                             </div>
@@ -92,7 +122,7 @@ if (!$settings) {
                                     <?php endif; ?>
                                 </div>
                                 <input type="file" name="app_favicon" accept=".ico,.png" id="app_favicon_input"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                                 <p class="text-xs text-gray-500 mt-1">Format: ICO, PNG (Max 2MB)</p>
                                 <div id="app_favicon_preview" class="mt-2"></div>
                             </div>
@@ -106,27 +136,27 @@ if (!$settings) {
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Nama Instansi *</label>
                                 <textarea name="instansi_nama" rows="2" required
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"><?= htmlspecialchars($settings['instansi_nama']) ?></textarea>
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"><?= htmlspecialchars($settings['instansi_nama']) ?></textarea>
                                 <p class="text-xs text-gray-500 mt-1">Gunakan Enter untuk baris baru</p>
                             </div>
                             
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Alamat Instansi</label>
                                 <textarea name="instansi_alamat" rows="3"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"><?= htmlspecialchars($settings['instansi_alamat']) ?></textarea>
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"><?= htmlspecialchars($settings['instansi_alamat']) ?></textarea>
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Telepon</label>
                                 <input type="text" name="instansi_telepon" value="<?= htmlspecialchars($settings['instansi_telepon']) ?>"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                        placeholder="(0511) 1234567">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
                                 <input type="email" name="instansi_email" value="<?= htmlspecialchars($settings['instansi_email']) ?>"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                        placeholder="admin@instansi.go.id">
                             </div>
                             
@@ -140,7 +170,7 @@ if (!$settings) {
                                     <?php endif; ?>
                                 </div>
                                 <input type="file" name="instansi_logo" accept=".png,.jpg,.jpeg,.svg" id="instansi_logo_input"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                                 <p class="text-xs text-gray-500 mt-1">Format: PNG, JPG, SVG (Max 2MB) - Logo ini akan muncul di laporan PDF</p>
                                 <div id="instansi_logo_preview" class="mt-2"></div>
                             </div>
@@ -154,28 +184,28 @@ if (!$settings) {
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Nama Penandatangan</label>
                                 <input type="text" name="ttd_nama_penandatangan" value="<?= htmlspecialchars($settings['ttd_nama_penandatangan']) ?>"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                        placeholder="Nama Lengkap">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">NIP</label>
                                 <input type="text" name="ttd_nip" value="<?= htmlspecialchars($settings['ttd_nip']) ?>"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                        placeholder="19XXXXX XXXXXX X XXX">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
                                 <input type="text" name="ttd_jabatan" value="<?= htmlspecialchars($settings['ttd_jabatan']) ?>"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                        placeholder="Kepala Dinas">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Kota</label>
                                 <input type="text" name="ttd_kota" value="<?= htmlspecialchars($settings['ttd_kota']) ?>"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                        placeholder="Banjarmasin">
                             </div>
 
@@ -190,7 +220,7 @@ if (!$settings) {
                                     <?php endif; ?>
                                 </div>
                                 <input type="file" name="ttd_image" accept=".png,.jpg,.jpeg,.svg" id="ttd_image_input"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                                 <p class="text-xs text-gray-500 mt-1">Format: PNG, JPG (Disarankan background transparan/PNG). Kosongkan jika ingin menggunakan TTD manual/teks saja.</p>
                                 <div id="ttd_image_preview" class="mt-2"></div>
                             </div>
@@ -202,7 +232,7 @@ if (!$settings) {
                     <a href="<?= BASE_URL ?>/index.php" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                         Batal
                     </a>
-                    <button type="submit" id="btnSave" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                    <button type="submit" id="btnSave" class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg">
                         <i class="fas fa-save mr-2"></i>Simpan Perubahan
                     </button>
                 </div>
@@ -222,7 +252,7 @@ function showTab(tabName) {
     });
     
     document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('border-blue-600', 'text-blue-600');
+        button.classList.remove('border-primary-600', 'text-primary-600');
         button.classList.add('border-transparent', 'text-gray-500');
     });
     
@@ -230,7 +260,7 @@ function showTab(tabName) {
     
     const activeButton = document.getElementById('tab-' + tabName);
     activeButton.classList.remove('border-transparent', 'text-gray-500');
-    activeButton.classList.add('border-blue-600', 'text-blue-600');
+    activeButton.classList.add('border-primary-600', 'text-primary-600');
 }
 
 // Image preview
@@ -257,17 +287,16 @@ function setupImagePreview(inputId, previewId) {
 setupImagePreview('app_logo_input', 'app_logo_preview');
 setupImagePreview('app_favicon_input', 'app_favicon_preview');
 setupImagePreview('instansi_logo_input', 'instansi_logo_preview');
-setupImagePreview('ttd_image_input', 'ttd_image_preview'); // Tambahan untuk TTD
+setupImagePreview('ttd_image_input', 'ttd_image_preview');
 
 // AJAX Submission
 $(document).ready(function() {
     $('#settingsForm').on('submit', function(e) {
-        e.preventDefault(); // Mencegah reload halaman
+        e.preventDefault(); 
         
         const btn = $('#btnSave');
         const originalText = btn.html();
         
-        // Basic Validation
         const appName = document.querySelector('[name="app_name"]').value.trim();
         const instansiNama = document.querySelector('[name="instansi_nama"]').value.trim();
         
@@ -283,7 +312,6 @@ $(document).ready(function() {
             return false;
         }
 
-        // Prepare AJAX
         const formData = new FormData(this);
         
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...');
@@ -305,31 +333,10 @@ $(document).ready(function() {
                         text: response.message,
                         timer: 2000,
                         showConfirmButton: false
+                    }).then(() => {
+                        // Reload agar warna tema berubah
+                        location.reload(); 
                     });
-                    
-                    // Update gambar jika ada yang diupload
-                    if (response.updated_images) {
-                        if (response.updated_images.app_logo_url) {
-                            $('#preview_app_logo_img').attr('src', response.updated_images.app_logo_url);
-                            $('#app_logo_preview').html('');
-                            $('#app_logo_input').val('');
-                        }
-                        if (response.updated_images.app_favicon_url) {
-                            $('#preview_favicon_img').attr('src', response.updated_images.app_favicon_url);
-                            $('#app_favicon_preview').html('');
-                            $('#app_favicon_input').val('');
-                        }
-                        if (response.updated_images.instansi_logo_url) {
-                            $('#preview_instansi_logo_img').attr('src', response.updated_images.instansi_logo_url);
-                            $('#instansi_logo_preview').html('');
-                            $('#instansi_logo_input').val('');
-                        }
-                        if (response.updated_images.ttd_image_url) {
-                            $('#preview_ttd_image_img').attr('src', response.updated_images.ttd_image_url);
-                            $('#ttd_image_preview').html('');
-                            $('#ttd_image_input').val('');
-                        }
-                    }
                 } else {
                     Swal.fire('Gagal', response.message, 'error');
                 }

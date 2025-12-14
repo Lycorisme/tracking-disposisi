@@ -35,225 +35,177 @@ $jenisSuratList = JenisSuratService::getAll();
 <div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
     
-    <div class="flex-1 lg:ml-64">
-        <main class="p-4 sm:p-6 lg:p-8">
-            <div class="mb-4 sm:mb-6">
-                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Manajemen Surat</h1>
-                <p class="text-sm sm:text-base text-gray-600">Kelola semua surat masuk, keluar, dan proposal</p>
+    <div class="flex-1 lg:ml-64 p-4 lg:p-8 transition-all duration-300">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Manajemen Surat</h1>
+                <p class="text-gray-600 text-sm">Kelola arsip surat masuk, keluar, dan proposal</p>
             </div>
-            
-            <!-- Action Bar & Filters - Responsive -->
-            <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
-                <div class="flex flex-col gap-4">
-                    <!-- Add Button -->
-                    <div>
-                        <button onclick="openAddModal()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                            <i class="fas fa-plus mr-2"></i>Tambah Surat
-                        </button>
+            <button onclick="openAddModal()" class="w-full sm:w-auto bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-plus"></i>
+                <span>Tambah Surat</span>
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Pencarian</label>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" name="search" value="<?= htmlspecialchars($filters['search']) ?>" 
+                               class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm" 
+                               placeholder="No. Agenda / Perihal...">
                     </div>
-                    
-                    <!-- Filters -->
-                    <form method="GET" class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                        <input type="text" 
-                               name="search" 
-                               value="<?= htmlspecialchars($filters['search']) ?>"
-                               placeholder="Cari nomor surat, perihal..." 
-                               class="flex-1 min-w-0 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        
-                        <select name="jenis" class="w-full sm:w-auto sm:min-w-[150px] px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua Jenis</option>
-                            <?php foreach ($jenisSuratList as $jenis): ?>
-                            <option value="<?= $jenis['id'] ?>" <?= $filters['id_jenis'] == $jenis['id'] ? 'selected' : '' ?>>
-                                <?= $jenis['nama_jenis'] ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                        
-                        <select name="status" class="w-full sm:w-auto sm:min-w-[150px] px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua Status</option>
-                            <option value="baru" <?= $filters['status_surat'] == 'baru' ? 'selected' : '' ?>>Baru</option>
-                            <option value="proses" <?= $filters['status_surat'] == 'proses' ? 'selected' : '' ?>>Proses</option>
-                            <option value="disetujui" <?= $filters['status_surat'] == 'disetujui' ? 'selected' : '' ?>>Disetujui</option>
-                            <option value="ditolak" <?= $filters['status_surat'] == 'ditolak' ? 'selected' : '' ?>>Ditolak</option>
-                        </select>
-                        
-                        <div class="flex gap-2">
-                            <button type="submit" class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">
-                                <i class="fas fa-search"></i><span class="ml-2 sm:hidden">Cari</span>
-                            </button>
-                            
-                            <?php if (!empty($filters['search']) || !empty($filters['id_jenis']) || !empty($filters['status_surat'])): ?>
-                            <a href="surat.php" class="flex-1 sm:flex-none bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm text-center">
-                                <i class="fas fa-times"></i><span class="ml-2 sm:hidden">Reset</span>
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </form>
                 </div>
-            </div>
-            
-            <!-- Desktop Table View -->
-            <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Jenis Surat</label>
+                    <select name="jenis" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                        <option value="">Semua Jenis</option>
+                        <?php foreach($jenisSuratList as $jenis): ?>
+                        <option value="<?= $jenis['id'] ?>" <?= $filters['id_jenis'] == $jenis['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($jenis['nama_jenis']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                    <select name="status" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                        <option value="">Semua Status</option>
+                        <option value="baru" <?= $filters['status_surat'] == 'baru' ? 'selected' : '' ?>>Baru</option>
+                        <option value="proses" <?= $filters['status_surat'] == 'proses' ? 'selected' : '' ?>>Proses</option>
+                        <option value="disetujui" <?= $filters['status_surat'] == 'disetujui' ? 'selected' : '' ?>>Disetujui</option>
+                        <option value="ditolak" <?= $filters['status_surat'] == 'ditolak' ? 'selected' : '' ?>>Ditolak</option>
+                        <option value="arsip" <?= $filters['status_surat'] == 'arsip' ? 'selected' : '' ?>>Arsip</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition text-sm">
+                        <i class="fas fa-filter mr-2"></i> Terapkan
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Info Surat</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asal/Tujuan</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl Surat</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php if (empty($suratList)): ?>
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Agenda</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Perihal</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php if (empty($suratList)): ?>
-                            <tr>
-                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                                    <i class="fas fa-inbox text-5xl mb-3 text-gray-300"></i>
-                                    <p>Tidak ada data surat</p>
+                                <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <i class="fas fa-search text-4xl text-gray-200 mb-3"></i>
+                                        <p>Tidak ada surat ditemukan.</p>
+                                    </div>
                                 </td>
                             </tr>
-                            <?php else: ?>
-                                <?php foreach ($suratList as $surat): ?>
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><?= $surat['nomor_agenda'] ?></div>
-                                        <div class="text-xs text-gray-500"><?= $surat['nomor_surat'] ?></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        <?= $surat['nama_jenis'] ?>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm text-gray-900"><?= truncate($surat['perihal'], 60) ?></div>
-                                        <?php if ($surat['dari_instansi']): ?>
-                                        <div class="text-xs text-gray-500">Dari: <?= truncate($surat['dari_instansi'], 30) ?></div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        <?= formatTanggal($surat['tanggal_surat']) ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full <?= getStatusBadge($surat['status_surat']) ?>">
-                                            <?= ucfirst($surat['status_surat']) ?>
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <div class="flex space-x-2">
-                                            <a href="surat_detail.php?id=<?= $surat['id'] ?>" 
-                                               class="text-blue-600 hover:text-blue-800" 
-                                               title="Detail">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            
-                                            <?php if (hasRole(['admin', 'superadmin'])): ?>
-                                            <button onclick='openEditModal(<?= json_encode($surat) ?>)' 
-                                                    class="text-yellow-600 hover:text-yellow-800" 
-                                                    title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            
-                                            <button onclick="arsipkanSurat(<?= $surat['id'] ?>)" 
-                                                    class="text-gray-600 hover:text-gray-800" 
-                                                    title="Arsipkan">
-                                                <i class="fas fa-archive"></i>
-                                            </button>
-                                            <?php endif; ?>
-                                            
-                                            <?php if (hasRole('superadmin')): ?>
-                                            <button onclick="deleteSurat(<?= $surat['id'] ?>)" 
-                                                    class="text-red-600 hover:text-red-800" 
-                                                    title="Hapus">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                            <?php endif; ?>
+                        <?php else: ?>
+                            <?php foreach ($suratList as $surat): ?>
+                            <tr class="hover:bg-gray-50 transition-colors group">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0 h-10 w-10 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-envelope"></i>
                                         </div>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <?php if ($pagination->hasPages()): ?>
-                <div class="border-t border-gray-200">
-                    <?= $pagination->render('surat.php', ['jenis' => $filters['id_jenis'], 'status' => $filters['status_surat'], 'search' => $filters['search']]) ?>
-                </div>
-                <?php endif; ?>
-            </div>
+                                        <div>
+                                            <div class="text-sm font-bold text-gray-900"><?= htmlspecialchars($surat['nomor_agenda']) ?></div>
+                                            <div class="text-xs text-gray-500 mt-0.5"><?= htmlspecialchars($surat['nomor_surat']) ?></div>
+                                            <div class="text-sm text-gray-700 mt-1 line-clamp-2" title="<?= htmlspecialchars($surat['perihal']) ?>">
+                                                <?= htmlspecialchars($surat['perihal']) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600">
+                                    <div class="flex flex-col gap-1">
+                                        <?php if ($surat['dari_instansi']): ?>
+                                            <span class="inline-flex items-center text-xs">
+                                                <i class="fas fa-arrow-right text-green-500 w-4"></i> Dari: <?= htmlspecialchars($surat['dari_instansi']) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ($surat['ke_instansi']): ?>
+                                            <span class="inline-flex items-center text-xs">
+                                                <i class="fas fa-arrow-left text-orange-500 w-4"></i> Ke: <?= htmlspecialchars($surat['ke_instansi']) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                                    <?= date('d/m/Y', strtotime($surat['tanggal_surat'])) ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <?php
+                                    $badge = match($surat['status_surat']) {
+                                        'baru' => 'bg-primary-100 text-primary-700', // Ikut tema
+                                        'proses' => 'bg-yellow-100 text-yellow-700',
+                                        'disetujui' => 'bg-green-100 text-green-700',
+                                        'ditolak' => 'bg-red-100 text-red-700',
+                                        default => 'bg-gray-100 text-gray-700'
+                                    };
+                                    ?>
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium <?= $badge ?>">
+                                        <?= ucfirst($surat['status_surat']) ?>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex justify-center space-x-2">
+                                        <a href="surat_detail.php?id=<?= $surat['id'] ?>" class="text-gray-400 hover:text-primary-600 transition-colors p-1" title="Detail">
+                                            <i class="fas fa-eye text-lg"></i>
+                                        </a>
+                                        
+                                        <?php if (hasRole(['admin', 'superadmin'])): ?>
+                                        <button onclick='openEditModal(<?= json_encode($surat) ?>)' class="text-gray-400 hover:text-yellow-600 transition-colors p-1" title="Edit">
+                                            <i class="fas fa-edit text-lg"></i>
+                                        </button>
+                                        
+                                        <button onclick="arsipkanSurat(<?= $surat['id'] ?>)" class="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Arsipkan">
+                                            <i class="fas fa-archive text-lg"></i>
+                                        </button>
+                                        <?php endif; ?>
 
-            <!-- Mobile Card View -->
-            <div class="lg:hidden space-y-4">
-                <?php if (empty($suratList)): ?>
-                <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-                    <i class="fas fa-inbox text-5xl mb-3 text-gray-300"></i>
-                    <p>Tidak ada data surat</p>
-                </div>
-                <?php else: ?>
-                    <?php foreach ($suratList as $surat): ?>
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                        <div class="p-4">
-                            <div class="flex items-start justify-between mb-3">
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="text-sm font-semibold text-gray-900 truncate"><?= $surat['nomor_agenda'] ?></h3>
-                                    <p class="text-xs text-gray-500"><?= $surat['nomor_surat'] ?></p>
-                                </div>
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full <?= getStatusBadge($surat['status_surat']) ?> ml-2 whitespace-nowrap">
-                                    <?= ucfirst($surat['status_surat']) ?>
-                                </span>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <span class="inline-block px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full mb-2">
-                                    <?= $surat['nama_jenis'] ?>
-                                </span>
-                                <p class="text-sm text-gray-700 line-clamp-2"><?= $surat['perihal'] ?></p>
-                            </div>
-                            
-                            <?php if ($surat['dari_instansi']): ?>
-                            <p class="text-xs text-gray-500 mb-3">
-                                <i class="fas fa-building mr-1"></i>
-                                <?= truncate($surat['dari_instansi'], 40) ?>
-                            </p>
-                            <?php endif; ?>
-                            
-                            <div class="text-xs text-gray-500 mb-3">
-                                <i class="far fa-calendar mr-1"></i>
-                                <?= formatTanggal($surat['tanggal_surat']) ?>
-                            </div>
-                            
-                            <div class="flex gap-2">
-                                <a href="surat_detail.php?id=<?= $surat['id'] ?>" 
-                                   class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-center py-2 px-3 rounded-lg text-sm font-medium transition-colors">
-                                    <i class="fas fa-eye mr-1"></i>Detail
-                                </a>
-                                
-                                <?php if (hasRole(['admin', 'superadmin'])): ?>
-                                <button onclick='openEditModal(<?= json_encode($surat) ?>)' 
-                                        class="flex-1 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 py-2 px-3 rounded-lg text-sm font-medium transition-colors">
-                                    <i class="fas fa-edit mr-1"></i>Edit
-                                </button>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                    
-                    <?php if ($pagination->hasPages()): ?>
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <?= $pagination->render('surat.php', ['jenis' => $filters['id_jenis'], 'status' => $filters['status_surat'], 'search' => $filters['search']]) ?>
-                    </div>
-                    <?php endif; ?>
-                <?php endif; ?>
+                                        <?php if (hasRole('superadmin')): ?>
+                                        <button onclick="deleteSurat(<?= $surat['id'] ?>)" class="text-gray-400 hover:text-red-600 transition-colors p-1" title="Hapus">
+                                            <i class="fas fa-trash text-lg"></i>
+                                        </button>
+                                        <?php endif; ?>
+
+                                        <?php if ($surat['lampiran_file']): ?>
+                                        <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" target="_blank" class="text-gray-400 hover:text-green-600 transition-colors p-1" title="Download">
+                                            <i class="fas fa-file-download text-lg"></i>
+                                        </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
-        </main>
-        
-        <?php include 'partials/footer.php'; ?>
+            
+            <?php if ($pagination->hasPages()): ?>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                <?= $pagination->render('surat.php', $filters) ?>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
-<!-- Modal Add/Edit - Responsive -->
 <div id="suratModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -268,7 +220,7 @@ $jenisSuratList = JenisSuratService::getAll();
                 <div class="px-4 sm:px-6 py-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Surat *</label>
-                        <select name="id_jenis" id="id_jenis" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <select name="id_jenis" id="id_jenis" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                             <option value="">Pilih Jenis</option>
                             <?php foreach ($jenisSuratList as $jenis): ?>
                             <option value="<?= $jenis['id'] ?>"><?= $jenis['nama_jenis'] ?></option>
@@ -280,7 +232,7 @@ $jenisSuratList = JenisSuratService::getAll();
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Surat *</label>
                             <input type="text" name="nomor_surat" id="nomor_surat" required 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                                    placeholder="Contoh: 123/PEM/XI/2025">
                         </div>
                         
@@ -288,28 +240,28 @@ $jenisSuratList = JenisSuratService::getAll();
                             <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Surat *</label>
                             <input type="date" name="tanggal_surat" id="tanggal_surat" required 
                                    value="<?= date('Y-m-d') ?>"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm">
                         </div>
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Diterima</label>
                         <input type="date" name="tanggal_diterima" id="tanggal_diterima" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm">
                     </div>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Dari Instansi</label>
                             <input type="text" name="dari_instansi" id="dari_instansi" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                                    placeholder="Nama instansi pengirim">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Ke Instansi</label>
                             <input type="text" name="ke_instansi" id="ke_instansi" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                                    placeholder="Nama instansi tujuan">
                         </div>
                     </div>
@@ -317,14 +269,14 @@ $jenisSuratList = JenisSuratService::getAll();
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Alamat Surat *</label>
                         <textarea name="alamat_surat" id="alamat_surat" required rows="2"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                                   placeholder="Alamat lengkap instansi"></textarea>
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Perihal *</label>
                         <textarea name="perihal" id="perihal" required rows="3"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                                   placeholder="Isi perihal surat"></textarea>
                     </div>
                     
@@ -332,7 +284,7 @@ $jenisSuratList = JenisSuratService::getAll();
                         <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran File</label>
                         <input type="file" name="lampiran_file" id="lampiran_file" 
                                accept=".pdf,.jpg,.jpeg,.png"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm">
                         <p class="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG (Max 5MB). File saat ini: <span id="currentFile">-</span></p>
                     </div>
                 </div>
@@ -343,7 +295,7 @@ $jenisSuratList = JenisSuratService::getAll();
                         Batal
                     </button>
                     <button type="submit" 
-                            class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                            class="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg">
                         <i class="fas fa-save mr-2"></i>Simpan
                     </button>
                 </div>

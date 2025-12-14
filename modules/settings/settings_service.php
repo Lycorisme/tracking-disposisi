@@ -1,6 +1,5 @@
 <?php
 // modules/settings/settings_service.php
-
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/config.php';
 
@@ -31,24 +30,24 @@ class SettingsService {
         $check = $conn->query("SELECT id FROM settings WHERE id = 1");
         if ($check && $check->num_rows > 0) return;
 
-        $sql = "INSERT INTO settings (id, app_name, app_description, instansi_nama, ttd_jabatan, ttd_kota) 
-                VALUES (1, 'Tracking Disposisi', 'Aplikasi Manajemen Surat', 'DINAS KOMUNIKASI DAN INFORMATIKA', 'Kepala Dinas', 'Banjarmasin')";
+        $sql = "INSERT INTO settings (id, app_name, app_description, theme_color, instansi_nama, ttd_jabatan, ttd_kota) 
+                VALUES (1, 'Tracking Disposisi', 'Aplikasi Manajemen Surat', 'blue', 'DINAS KOMUNIKASI DAN INFORMATIKA', 'Kepala Dinas', 'Banjarmasin')";
         
         $conn->query($sql);
     }
 
     /**
-     * Update settings (SUDAH DIPERBAIKI UNTUK TTD IMAGE)
+     * Update settings (TERMASUK THEME COLOR & TTD IMAGE)
      */
     public static function update($data) {
         $conn = getConnection();
         
-        // Query update mencakup kolom ttd_image yang baru
         $sql = "UPDATE settings SET 
                 app_name = ?,
                 app_description = ?,
                 app_logo = ?,
                 app_favicon = ?,
+                theme_color = ?,  
                 instansi_nama = ?,
                 instansi_alamat = ?,
                 instansi_telepon = ?,
@@ -70,11 +69,12 @@ class SettingsService {
         // Pastikan ttd_image ada dalam data, jika tidak set null
         $ttdImage = isset($data['ttd_image']) ? $data['ttd_image'] : null;
 
-        $stmt->bind_param("ssssssssssssss", 
+        $stmt->bind_param("sssssssssssssss", 
             $data['app_name'],
             $data['app_description'],
             $data['app_logo'],
             $data['app_favicon'],
+            $data['theme_color'], // Value Baru
             $data['instansi_nama'],
             $data['instansi_alamat'],
             $data['instansi_telepon'],

@@ -13,16 +13,19 @@ $appName = function_exists('getSetting') ? getSetting('app_name', APP_NAME) : AP
 $appFavicon = function_exists('getSetting') ? getSetting('app_favicon') : null;
 $appLogo = function_exists('getSetting') ? getSetting('app_logo') : null;
 
+// --- LOGIKA WARNA TEMA DINAMIS ---
+// Ambil warna dari database, default ke 'blue' jika belum di-set
+$themeColorName = function_exists('getSetting') ? getSetting('theme_color', 'blue') : 'blue';
+
 // Ambil data user yang sedang login
 $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
-$userAvatar = null; // Bisa diisi logic ambil foto dari database jika ada
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $pageTitle ?? 'Dashboard' ?> - <?= htmlspecialchars($appName) ?></title>
+    <title><?= isset($pageTitle) ? $pageTitle . ' - ' : '' ?><?= htmlspecialchars($appName) ?></title>
     
     <?php if ($appFavicon): ?>
     <link rel="icon" href="<?= SETTINGS_UPLOAD_URL . htmlspecialchars($appFavicon) ?>" type="image/x-icon">
@@ -30,13 +33,30 @@ $userAvatar = null; // Bisa diisi logic ambil foto dari database jika ada
     
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Alias 'primary' ke warna pilihan dari database
+                        // Tailwind akan otomatis membuat primary-50, primary-100, dst.
+                        primary: tailwind.colors.<?= $themeColorName ?> 
+                    }
+                }
+            }
+        }
+    </script>
+    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
     <style>
         [x-cloak] { display: none !important; }
-        .sidebar-active { @apply bg-blue-50 border-r-4 border-blue-600 text-blue-600; }
+        /* Gunakan class 'primary' yang sudah dikonfig di atas */
+        .sidebar-active { 
+            @apply bg-primary-50 border-r-4 border-primary-600 text-primary-600; 
+        }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -67,10 +87,10 @@ $userAvatar = null; // Bisa diisi logic ambil foto dari database jika ada
         <div class="flex items-center">
             <?php if ($currentUser): ?>
             <div class="relative ml-3">
-                <button type="button" onclick="toggleUserDropdown()" class="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" id="user-menu-button">
+                <button type="button" onclick="toggleUserDropdown()" class="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" id="user-menu-button">
                     <span class="sr-only">Open user menu</span>
                     
-                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
+                    <div class="h-9 w-9 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold shadow-sm">
                         <?= strtoupper(substr($currentUser['nama_lengkap'], 0, 1)) ?>
                     </div>
                     
@@ -147,7 +167,7 @@ $userAvatar = null; // Bisa diisi logic ambil foto dari database jika ada
     </script>
 
     <?php
-    // Flash Message Handling (Sama seperti sebelumnya)
+    // Flash Message Handling
     if (function_exists('hasFlash') && hasFlash()) {
         $flash = getFlash();
         $icon = $flash['type'] === 'success' ? 'success' : ($flash['type'] === 'error' ? 'error' : 'info');

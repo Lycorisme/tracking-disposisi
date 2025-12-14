@@ -38,6 +38,7 @@ try {
                 'app_description' => sanitize($_POST['app_description'] ?? ''),
                 'app_logo' => $currentSettings['app_logo'],
                 'app_favicon' => $currentSettings['app_favicon'],
+                'theme_color' => sanitize($_POST['theme_color'] ?? 'blue'), // TANGKAP TEMA WARNA
                 'instansi_nama' => sanitize($_POST['instansi_nama'] ?? ''),
                 'instansi_alamat' => sanitize($_POST['instansi_alamat'] ?? ''),
                 'instansi_telepon' => sanitize($_POST['instansi_telepon'] ?? ''),
@@ -47,7 +48,7 @@ try {
                 'ttd_nip' => sanitize($_POST['ttd_nip'] ?? ''),
                 'ttd_jabatan' => sanitize($_POST['ttd_jabatan'] ?? 'Kepala Dinas'),
                 'ttd_kota' => sanitize($_POST['ttd_kota'] ?? 'Banjarmasin'),
-                'ttd_image' => $currentSettings['ttd_image'] ?? null // Default ke yang lama
+                'ttd_image' => $currentSettings['ttd_image'] ?? null
             ];
             
             // Variabel untuk melacak perubahan gambar agar bisa update preview di frontend
@@ -86,7 +87,7 @@ try {
                 }
             }
 
-            // Handle TTD Image upload (BARU)
+            // Handle TTD Image upload
             if (isset($_FILES['ttd_image']) && $_FILES['ttd_image']['error'] !== UPLOAD_ERR_NO_FILE) {
                 $uploadResult = SettingsService::uploadFile($_FILES['ttd_image'], $currentSettings['ttd_image'] ?? null);
                 if ($uploadResult['success']) {

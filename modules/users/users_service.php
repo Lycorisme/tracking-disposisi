@@ -4,13 +4,11 @@ require_once __DIR__ . '/../../config/database.php';
 
 class UsersService {
     
-    /**
-     * Ambil semua user (Support filter status untuk Admin)
-     */
+    // Ambil semua user dengan filter status
     public static function getAll($status = null) {
         $conn = getConnection();
         
-        $sql = "SELECT u.*, r.nama_role, b.nama_bagian 
+        $sql = "SELECT u.*, r.nama_role, r.keterangan as role_deskripsi, b.nama_bagian 
                 FROM users u 
                 LEFT JOIN roles r ON u.id_role = r.id 
                 LEFT JOIN bagian b ON u.id_bagian = b.id 
@@ -19,7 +17,6 @@ class UsersService {
         $params = [];
         $types = "";
 
-        // Filter status jika ada dan bukan 'all'
         if ($status && $status !== 'all') {
             $sql .= " AND u.status = ?";
             $params[] = $status;
@@ -39,15 +36,13 @@ class UsersService {
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    /**
-     * Ambil data user berdasarkan ID
-     */
+    // Ambil detail user berdasarkan ID (PERBAIKAN UTAMA DISINI)
     public static function getById($id) {
         $conn = getConnection();
-        $query = "SELECT u.*, r.nama_role, b.nama_bagian
+        // Ambil juga 'keterangan' dari tabel roles sebagai default bagian
+        $query = "SELECT u.*, r.nama_role, r.keterangan as role_deskripsi
                   FROM users u
                   LEFT JOIN roles r ON u.id_role = r.id
-                  LEFT JOIN bagian b ON u.id_bagian = b.id
                   WHERE u.id = ?";
         
         $stmt = $conn->prepare($query);
@@ -56,9 +51,24 @@ class UsersService {
         return $stmt->get_result()->fetch_assoc();
     }
 
-    /**
-     * Hitung jumlah user pending (untuk Badge Sidebar)
-     */
+    // Update Profil (Termasuk nama_bagian_custom)
+    public static function updateProfile($id, $data) {
+        $conn = getConnection();
+        
+        // Cek apakah 'nama_bagian_custom' dikirim, jika kosong set NULL
+        $bagianCustom = !empty($data['nama_bagian_custom']) ? $data['nama_bagian_custom'] : null;
+
+        $query = "UPDATE users SET nama_lengkap = ?, email = ?, nama_bagian_custom = ? WHERE id = ?";
+        $stmt = $conn->prepare($query);
+        
+        // 'sssi' -> string, string, string (bisa null), integer
+        $stmt->bind_param("sssi", $data['nama_lengkap'], $data['email'], $bagianCustom, $id);
+        
+        return $stmt->execute();
+    }
+
+    // --- FUNGSI LAINNYA TETAP SAMA ---
+
     public static function countPending() {
         $conn = getConnection();
         $result = $conn->query("SELECT COUNT(*) as total FROM users WHERE status = 'pending'");
@@ -66,32 +76,20 @@ class UsersService {
         return $row['total'] ?? 0;
     }
 
-    /**
-     * Ambil daftar semua role (untuk Dropdown Ganti Role)
-     */
     public static function getRoles() {
         $conn = getConnection();
         $result = $conn->query("SELECT * FROM roles ORDER BY id ASC");
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    /**
-     * Update Status User (Approve/Reject)
-     */
     public static function updateStatus($userId, $status) {
         $conn = getConnection();
-        // Update status_aktif juga agar sinkron (1 = active, 0 = lainnya)
         $isActive = ($status === 'active') ? 1 : 0;
-        
         $stmt = $conn->prepare("UPDATE users SET status = ?, status_aktif = ? WHERE id = ?");
         $stmt->bind_param("sii", $status, $isActive, $userId);
-        
         return $stmt->execute();
     }
 
-    /**
-     * Update Role User
-     */
     public static function updateRole($userId, $roleId) {
         $conn = getConnection();
         $stmt = $conn->prepare("UPDATE users SET id_role = ? WHERE id = ?");
@@ -99,9 +97,6 @@ class UsersService {
         return $stmt->execute();
     }
 
-    /**
-     * Hapus User
-     */
     public static function delete($userId) {
         $conn = getConnection();
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
@@ -109,33 +104,14 @@ class UsersService {
         return $stmt->execute();
     }
 
-    /**
-     * Update Profil (Nama & Email)
-     */
-    public static function updateProfile($id, $data) {
-        $conn = getConnection();
-        $query = "UPDATE users SET nama_lengkap = ?, email = ? WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("ssi", $data['nama_lengkap'], $data['email'], $id);
-        return $stmt->execute();
-    }
-    
-    /**
-     * Ganti Password
-     */
     public static function changePassword($id, $newPassword) {
         $conn = getConnection();
-        // Disarankan menggunakan password_hash di masa depan
-        // $hash = password_hash($newPassword, PASSWORD_DEFAULT);
         $query = "UPDATE users SET password = ? WHERE id = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param("si", $newPassword, $id);
         return $stmt->execute();
     }
     
-    /**
-     * Cek apakah email sudah ada (Validasi)
-     */
     public static function emailExists($email, $excludeId = null) {
         $conn = getConnection();
         $query = "SELECT COUNT(*) as total FROM users WHERE email = ?";

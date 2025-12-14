@@ -24,7 +24,7 @@ $availableUsers = UsersService::getAll($user['id']); // Exclude current user
 
 $pageTitle = 'Detail Surat';
 
-// Handle success/error messages via URL parameters (Fallback untuk non-JS)
+// Handle success/error messages via URL parameters
 $successMessage = '';
 $errorMessage = '';
 
@@ -66,7 +66,7 @@ if (isset($_GET['error'])) {
             
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <a href="surat.php" class="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
+                    <a href="surat.php" class="text-primary-600 hover:text-primary-800 text-sm mb-2 inline-block transition-colors">
                         <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar Surat
                     </a>
                     <h1 class="text-2xl font-bold text-gray-800">Detail Surat</h1>
@@ -74,12 +74,12 @@ if (isset($_GET['error'])) {
                 
                 <div class="flex space-x-2">
                     <?php if ($surat['lampiran_file']): ?>
-                    <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" target="_blank" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">
+                    <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" target="_blank" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                         <i class="fas fa-file-pdf mr-2"></i>Lihat File
                     </a>
                     <?php endif; ?>
                     
-                    <button onclick="openDisposisiModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+                    <button onclick="openDisposisiModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm transition-colors shadow-sm">
                         <i class="fas fa-paper-plane mr-2"></i>Disposisi
                     </button>
                 </div>
@@ -121,7 +121,7 @@ if (isset($_GET['error'])) {
                     
                     <div class="bg-white rounded-lg shadow p-6">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">
-                            <i class="fas fa-route mr-2 text-blue-600"></i> Tracking Disposisi
+                            <i class="fas fa-route mr-2 text-primary-600"></i> Tracking Disposisi
                         </h2>
                         
                         <div id="disposisi-timeline-container">
@@ -135,7 +135,7 @@ if (isset($_GET['error'])) {
                                 <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                                 <div class="space-y-6">
                                     <?php foreach ($disposisiHistory as $disp): 
-                                        $bgClass = 'bg-blue-100'; $iconClass = 'fa-paper-plane text-blue-600';
+                                        $bgClass = 'bg-primary-100'; $iconClass = 'fa-paper-plane text-primary-600'; // Default mengikuti tema
                                         if ($disp['status_disposisi'] === 'selesai') { $bgClass = 'bg-green-100'; $iconClass = 'fa-check text-green-600'; }
                                         elseif ($disp['status_disposisi'] === 'ditolak') { $bgClass = 'bg-red-100'; $iconClass = 'fa-times text-red-600'; }
                                         elseif ($disp['status_disposisi'] === 'diproses') { $bgClass = 'bg-yellow-100'; $iconClass = 'fa-spinner text-yellow-600'; }
@@ -160,7 +160,7 @@ if (isset($_GET['error'])) {
                                                 </span>
                                             </div>
                                             <?php if ($disp['catatan']): ?>
-                                            <div class="mt-2 p-2 bg-white rounded border-l-4 border-blue-500">
+                                            <div class="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
                                                 <p class="text-sm text-gray-700"><?= nl2br($disp['catatan']) ?></p>
                                             </div>
                                             <?php endif; ?>
@@ -184,8 +184,8 @@ if (isset($_GET['error'])) {
                     <div class="bg-white rounded-lg shadow p-6">
                         <h3 class="text-sm font-semibold text-gray-600 uppercase mb-4">Statistik Disposisi</h3>
                         <div class="space-y-3">
-                            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                                <div class="flex items-center"><i class="fas fa-paper-plane text-blue-600 mr-2"></i><span class="text-sm text-gray-700">Total Disposisi</span></div>
+                            <div class="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
+                                <div class="flex items-center"><i class="fas fa-paper-plane text-primary-600 mr-2"></i><span class="text-sm text-gray-700">Total Disposisi</span></div>
                                 <span class="font-bold text-gray-800" id="stat-total"><?= count($disposisiHistory) ?></span>
                             </div>
                             
@@ -212,7 +212,7 @@ if (isset($_GET['error'])) {
                             <i class="fas fa-file-pdf text-red-600 text-2xl"></i>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-800 truncate"><?= $surat['lampiran_file'] ?></p>
-                                <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" target="_blank" class="text-xs text-blue-600 hover:text-blue-800">Lihat File <i class="fas fa-external-link-alt ml-1"></i></a>
+                                <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" target="_blank" class="text-xs text-primary-600 hover:text-primary-800">Lihat File <i class="fas fa-external-link-alt ml-1"></i></a>
                             </div>
                         </div>
                     </div>
@@ -240,7 +240,7 @@ if (isset($_GET['error'])) {
                 <div class="px-6 py-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Disposisi Ke *</label>
-                        <select name="ke_user_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <select name="ke_user_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                             <option value="">Pilih User</option>
                             <?php foreach ($availableUsers as $availUser): ?>
                             <option value="<?= $availUser['id'] ?>">
@@ -252,13 +252,13 @@ if (isset($_GET['error'])) {
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Catatan / Instruksi</label>
-                        <textarea name="catatan" rows="4" placeholder="Berikan catatan atau instruksi..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                        <textarea name="catatan" rows="4" placeholder="Berikan catatan atau instruksi..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
                     </div>
                 </div>
                 
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
                     <button type="button" onclick="closeDisposisiModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200">
+                    <button type="submit" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200">
                         <i class="fas fa-paper-plane mr-2"></i>Kirim Disposisi
                     </button>
                 </div>
@@ -296,8 +296,6 @@ document.getElementById('disposisiForm').addEventListener('submit', async functi
     
     const formData = new FormData(this);
     
-    // PERBAIKAN UTAMA:
-    // Gunakan getAttribute('action') karena ada input name="action" yang menimpa properti action form
     const actionUrl = this.getAttribute('action'); 
 
     try {

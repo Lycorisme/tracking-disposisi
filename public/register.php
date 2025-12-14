@@ -9,14 +9,13 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-$appName = defined('APP_NAME') ? APP_NAME : 'Tracking Disposisi';
-$appDescription = 'Sistem Disposisi Digital';
-if (function_exists('getSetting')) {
-    $appName = getSetting('app_name', APP_NAME);
-    $appDescription = getSetting('app_description', 'Sistem Disposisi Digital');
-    $appLogo = getSetting('app_logo');
-    $appFavicon = getSetting('app_favicon');
-}
+// Load settings manual
+$conn = getConnection();
+$settings = $conn->query("SELECT * FROM settings WHERE id = 1 LIMIT 1")->fetch_assoc();
+$appName = $settings['app_name'] ?? 'Tracking Disposisi';
+$appDesc = $settings['app_description'] ?? 'Sistem Disposisi Digital';
+$appLogo = $settings['app_logo'] ?? null;
+$themeColor = $settings['theme_color'] ?? 'blue';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -25,116 +24,126 @@ if (function_exists('getSetting')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrasi - <?= htmlspecialchars($appName) ?></title>
     
-    <?php if (isset($appFavicon) && $appFavicon): ?>
-    <link rel="icon" href="<?= SETTINGS_UPLOAD_URL . htmlspecialchars($appFavicon) ?>" type="image/x-icon">
+    <?php if ($settings['app_favicon']): ?>
+    <link rel="icon" href="<?= SETTINGS_UPLOAD_URL . $settings['app_favicon'] ?>" type="image/x-icon">
     <?php endif; ?>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { primary: tailwind.colors.<?= $themeColor ?> } } }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body class="bg-gradient-to-br from-blue-500 to-blue-700 min-h-screen flex items-center justify-center p-4">
+<body class="h-screen bg-gray-50 overflow-hidden">
     
-    <div class="w-full max-w-md">
-        <!-- Logo & Title Section - Responsive -->
-        <div class="text-center mb-6 sm:mb-8">
-            <div class="inline-block p-3 sm:p-4 bg-white rounded-full shadow-lg mb-3 sm:mb-4">
-                <?php if (isset($appLogo) && $appLogo): ?>
-                    <img src="<?= SETTINGS_UPLOAD_URL . $appLogo ?>" alt="Logo" class="h-12 sm:h-16 w-auto">
-                <?php else: ?>
-                    <i class="fas fa-envelope-open-text text-4xl sm:text-5xl text-blue-600"></i>
-                <?php endif; ?>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2"><?= htmlspecialchars($appName) ?></h1>
-            <p class="text-sm sm:text-base text-blue-100"><?= htmlspecialchars($appDescription) ?></p>
-        </div>
-        
-        <!-- Register Card - Responsive -->
-        <div class="bg-white rounded-lg shadow-2xl p-6 sm:p-8">
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2 text-center">Daftar Akun Baru</h2>
-            <p class="text-gray-500 text-xs sm:text-sm text-center mb-4 sm:mb-6">Isi data diri Anda untuk mendaftar ke sistem</p>
+    <div class="flex h-full">
+        <div class="hidden lg:flex w-1/2 bg-primary-600 relative items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-primary-600 opacity-90 z-10"></div>
+            <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" 
+                 class="absolute inset-0 w-full h-full object-cover" alt="Background">
             
-            <form id="registerForm">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-user mr-1 text-gray-400"></i>
-                        Nama Lengkap
-                    </label>
-                    <input type="text" 
-                           name="nama_lengkap" 
-                           required
-                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                           placeholder="Contoh: Budi Santoso">
+            <div class="relative z-20 text-center px-12 text-white">
+                <div class="mb-6 inline-block p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl">
+                    <i class="fas fa-user-plus text-6xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold mb-4">Bergabung Sekarang</h1>
+                <p class="text-lg text-primary-100 font-light leading-relaxed">Daftarkan diri Anda untuk mulai mengelola disposisi surat dengan mudah dan efisien.</p>
+            </div>
+            
+            <div class="absolute -bottom-24 -right-24 w-64 h-64 bg-white/10 rounded-full z-10 blur-3xl"></div>
+            <div class="absolute top-1/4 -left-12 w-48 h-48 bg-white/10 rounded-full z-10 blur-3xl"></div>
+        </div>
+
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-8 relative overflow-y-auto">
+            <div class="w-full max-w-md space-y-8">
+                
+                <div class="text-center lg:text-left">
+                    <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Buat Akun Baru</h2>
+                    <p class="mt-2 text-sm text-gray-600">Lengkapi data diri Anda di bawah ini.</p>
                 </div>
 
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-envelope mr-1 text-gray-400"></i>
-                        Email
-                    </label>
-                    <input type="email" 
-                           name="email" 
-                           required
-                           class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                           placeholder="nama@email.com">
-                </div>
-                
-                <div class="mb-4 sm:mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-lock mr-1 text-gray-400"></i>
-                        Password
-                    </label>
-                    <div class="relative">
-                        <input type="password" 
-                               id="password" 
-                               name="password" 
-                               required
-                               class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 sm:pr-12 text-sm sm:text-base"
-                               placeholder="Buat password aman">
-                        <button type="button" 
-                                onclick="togglePassword()"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                            <i id="toggleIcon" class="fas fa-eye"></i>
+                <form class="mt-8 space-y-5" id="registerForm">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <input type="text" name="nama_lengkap" required 
+                                   class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow sm:text-sm" 
+                                   placeholder="Contoh: Budi Santoso">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Instansi</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-envelope text-gray-400"></i>
+                            </div>
+                            <input type="email" name="email" required 
+                                   class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow sm:text-sm" 
+                                   placeholder="nama@instansi.com">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" name="password" id="password" required minlength="6"
+                                   class="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow sm:text-sm" 
+                                   placeholder="Buat password aman">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer" onclick="togglePassword()">
+                                <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="toggleIcon"></i>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Minimal 6 karakter</p>
+                    </div>
+
+                    <div>
+                        <button type="submit" id="btnRegister"
+                                class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                                <i class="fas fa-user-plus text-primary-500 group-hover:text-primary-400 transition-colors"></i>
+                            </span>
+                            Daftar Sekarang
                         </button>
                     </div>
-                </div>
-                
-                <button type="submit" 
-                        id="btnRegister"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 sm:py-3 px-4 rounded-lg transition duration-200 shadow-md hover:shadow-lg text-sm sm:text-base">
-                    <i class="fas fa-user-plus mr-2"></i>
-                    Daftar Sekarang
-                </button>
+                </form>
 
-                <div class="mt-4 sm:mt-6 text-center border-t pt-4">
-                    <p class="text-xs sm:text-sm text-gray-600">Sudah punya akun?</p>
-                    <a href="login.php" class="text-blue-600 hover:text-blue-800 font-semibold text-xs sm:text-sm">
-                        Login disini
-                    </a>
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-600">
+                        Sudah punya akun? 
+                        <a href="login.php" class="font-medium text-primary-600 hover:text-primary-500 transition-colors">
+                            Login disini
+                        </a>
+                    </p>
                 </div>
-            </form>
-        </div>
-        
-        <!-- Footer - Responsive -->
-        <div class="text-center mt-4 sm:mt-6 text-white text-xs sm:text-sm">
-            <p>&copy; <?= date('Y') ?> <?= htmlspecialchars($appName) ?>. All rights reserved.</p>
+            </div>
+            
+            <div class="absolute bottom-4 text-center w-full text-xs text-gray-400 lg:hidden">
+                &copy; <?= date('Y') ?> <?= htmlspecialchars($appName) ?>
+            </div>
         </div>
     </div>
-    
+
     <script>
         function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleIcon = document.getElementById('toggleIcon');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
+            const input = document.getElementById('password');
+            const icon = document.getElementById('toggleIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
-                passwordInput.type = 'password';
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
         }
 
@@ -159,24 +168,23 @@ if (function_exists('getSetting')) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Pendaftaran Berhasil!',
-                                text: 'Akun Anda telah dibuat dan menunggu persetujuan Admin. Silakan hubungi Admin untuk aktivasi.',
-                                confirmButtonText: 'OK, Kembali ke Login',
-                                confirmButtonColor: '#2563EB'
-                            }).then((result) => {
+                                text: 'Akun Anda telah dibuat dan menunggu persetujuan Admin.',
+                                confirmButtonText: 'Ke Halaman Login',
+                                confirmButtonColor: '#10B981'
+                            }).then(() => {
                                 window.location.href = 'login.php';
                             });
                         } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Gagal Mendaftar',
+                                title: 'Gagal',
                                 text: res.message
                             });
                         }
                     },
-                    error: function(xhr, status, error) {
+                    error: function(xhr) {
                         btn.prop('disabled', false).html(originalText);
-                        console.error(xhr.responseText);
-                        Swal.fire('Error', 'Terjadi kesalahan sistem. Silakan coba lagi.', 'error');
+                        Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
                     }
                 });
             });

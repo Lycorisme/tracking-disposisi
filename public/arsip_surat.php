@@ -12,6 +12,7 @@ requireLogin();
 $user = getCurrentUser();
 $pageTitle = 'Arsip Surat';
 
+// Pagination Logic
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
@@ -27,14 +28,13 @@ $arsipList = SuratService::getArsip($perPage, $offset);
 <div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
     
-    <div class="flex-1 lg:ml-64">
+    <div class="flex-1 lg:ml-64 transition-all duration-300">
         <main class="p-4 sm:p-6 lg:p-8">
             <div class="mb-4 sm:mb-6">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Arsip Surat</h1>
                 <p class="text-sm sm:text-base text-gray-600">Daftar surat yang telah diarsipkan</p>
             </div>
             
-            <!-- Desktop Table View -->
             <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -58,7 +58,7 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                             </tr>
                             <?php else: ?>
                                 <?php foreach ($arsipList as $surat): ?>
-                                <tr class="hover:bg-gray-50">
+                                <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900"><?= $surat['nomor_agenda'] ?></div>
                                         <div class="text-xs text-gray-500"><?= $surat['nomor_surat'] ?></div>
@@ -81,7 +81,7 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                                         <div class="flex space-x-2">
                                             <a href="surat_detail.php?id=<?= $surat['id'] ?>" 
-                                               class="text-blue-600 hover:text-blue-800" 
+                                               class="text-primary-600 hover:text-primary-800 transition-colors" 
                                                title="Lihat Detail">
                                                 <i class="fas fa-eye"></i>
                                             </a>
@@ -89,7 +89,7 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                                             <?php if ($surat['lampiran_file']): ?>
                                             <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" 
                                                target="_blank"
-                                               class="text-green-600 hover:text-green-800" 
+                                               class="text-green-600 hover:text-green-800 transition-colors" 
                                                title="Lihat File">
                                                 <i class="fas fa-file-pdf"></i>
                                             </a>
@@ -104,13 +104,12 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                 </div>
                 
                 <?php if ($pagination->hasPages()): ?>
-                <div class="border-t border-gray-200">
+                <div class="border-t border-gray-200 px-4 py-3">
                     <?= $pagination->render('arsip_surat.php') ?>
                 </div>
                 <?php endif; ?>
             </div>
 
-            <!-- Mobile Card View -->
             <div class="lg:hidden space-y-4">
                 <?php if (empty($arsipList)): ?>
                 <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
@@ -147,7 +146,7 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                             
                             <div class="flex space-x-2">
                                 <a href="surat_detail.php?id=<?= $surat['id'] ?>" 
-                                   class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                   class="flex-1 bg-primary-50 text-primary-600 hover:bg-primary-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
                                     <i class="fas fa-eye mr-1"></i>Detail
                                 </a>
                                 
@@ -175,5 +174,3 @@ $arsipList = SuratService::getArsip($perPage, $offset);
         <?php include 'partials/footer.php'; ?>
     </div>
 </div>
-
-<?php include 'partials/footer.php'; ?>

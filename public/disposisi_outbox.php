@@ -33,21 +33,20 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
 <div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
     
-    <div class="flex-1 lg:ml-64">
+    <div class="flex-1 lg:ml-64 transition-all duration-300">
         <main class="p-4 sm:p-6 lg:p-8">
             <div class="mb-4 sm:mb-6">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Disposisi Keluar</h1>
                 <p class="text-sm sm:text-base text-gray-600">Daftar disposisi yang Anda kirimkan</p>
             </div>
             
-            <!-- Filter Section - Responsive -->
             <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
                 <form method="GET" class="space-y-3 sm:space-y-0 sm:flex sm:gap-2">
                     <input type="text" name="search" value="<?= htmlspecialchars($filters['search']) ?>"
                            placeholder="Cari nomor surat, perihal..." 
-                           class="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                           class="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                     
-                    <select name="status" class="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <select name="status" class="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Semua Status</option>
                         <option value="dikirim" <?= $filters['status_disposisi'] == 'dikirim' ? 'selected' : '' ?>>Dikirim</option>
                         <option value="diterima" <?= $filters['status_disposisi'] == 'diterima' ? 'selected' : '' ?>>Diterima</option>
@@ -57,12 +56,12 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                     </select>
                     
                     <div class="flex gap-2">
-                        <button type="submit" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <button type="submit" class="flex-1 sm:flex-none bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                             <i class="fas fa-search"></i><span class="ml-2 sm:hidden">Cari</span>
                         </button>
                         
                         <?php if (!empty($filters['search']) || !empty($filters['status_disposisi'])): ?>
-                        <a href="disposisi_outbox.php" class="flex-1 sm:flex-none bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium text-center">
+                        <a href="disposisi_outbox.php" class="flex-1 sm:flex-none bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors">
                             <i class="fas fa-times"></i><span class="ml-2 sm:hidden">Reset</span>
                         </a>
                         <?php endif; ?>
@@ -70,7 +69,6 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                 </form>
             </div>
             
-            <!-- Desktop Table View -->
             <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -94,7 +92,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                             </tr>
                             <?php else: ?>
                                 <?php foreach ($disposisiList as $disp): ?>
-                                <tr class="hover:bg-gray-50">
+                                <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900"><?= $disp['ke_user_nama'] ?></div>
                                     </td>
@@ -122,7 +120,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                                         <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
-                                           class="text-blue-600 hover:text-blue-800" 
+                                           class="text-primary-600 hover:text-primary-800 transition-colors" 
                                            title="Lihat Surat">
                                             <i class="fas fa-eye"></i>
                                         </a>
@@ -135,13 +133,12 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                 </div>
                 
                 <?php if ($pagination->hasPages()): ?>
-                <div class="border-t border-gray-200">
+                <div class="border-t border-gray-200 px-4 py-3">
                     <?= $pagination->render('disposisi_outbox.php', ['status' => $filters['status_disposisi'], 'search' => $filters['search']]) ?>
                 </div>
                 <?php endif; ?>
             </div>
 
-            <!-- Mobile Card View -->
             <div class="lg:hidden space-y-4">
                 <?php if (empty($disposisiList)): ?>
                 <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
@@ -187,7 +184,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                             </div>
                             
                             <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
-                               class="block bg-blue-50 text-blue-600 hover:bg-blue-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                               class="block bg-primary-50 text-primary-600 hover:bg-primary-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
                                 <i class="fas fa-eye mr-1"></i>Lihat Surat
                             </a>
                         </div>
