@@ -5,18 +5,15 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../modules/users/users_service.php';
 
-// Pastikan hanya Superadmin yang bisa akses
 requireLogin();
 requireRole('superadmin');
 
 $pageTitle = 'Manajemen User';
 $currentStatus = $_GET['status'] ?? 'all';
 
-// Ambil data user sesuai filter status
 $listUsers = UsersService::getAll($currentStatus);
-$listRoles = UsersService::getRoles(); // Untuk dropdown ganti role
+$listRoles = UsersService::getRoles();
 
-// Siapkan data role untuk Javascript (SweetAlert)
 $rolesOptions = [];
 foreach ($listRoles as $r) {
     $rolesOptions[$r['id']] = ucfirst($r['nama_role']);
@@ -25,18 +22,19 @@ foreach ($listRoles as $r) {
 
 <?php include 'partials/header.php'; ?>
 
-<div class="flex min-h-screen bg-gray-100">
+<div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
 
-    <div class="flex-1 lg:ml-64 p-6 lg:p-8">
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Manajemen Pengguna</h1>
-            <p class="text-gray-600">Kelola pendaftaran, hak akses, dan role pengguna</p>
+    <div class="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8">
+        <div class="mb-4 sm:mb-6">
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Manajemen Pengguna</h1>
+            <p class="text-sm sm:text-base text-gray-600">Kelola pendaftaran, hak akses, dan role pengguna</p>
         </div>
 
-        <div class="bg-white rounded-lg shadow mb-6">
-            <div class="border-b border-gray-200">
-                <nav class="flex -mb-px">
+        <!-- Tabs - Responsive -->
+        <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+            <div class="border-b border-gray-200 overflow-x-auto">
+                <nav class="flex -mb-px min-w-max">
                     <?php
                     $tabs = [
                         'all' => 'Semua User',
@@ -51,12 +49,13 @@ foreach ($listRoles as $r) {
                             ? 'border-blue-500 text-blue-600' 
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
                     ?>
-                        <a href="?status=<?= $key ?>" class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm <?= $activeClass ?> transition-colors duration-200">
-                            <?= $label ?>
+                        <a href="?status=<?= $key ?>" class="flex-1 min-w-0 py-3 sm:py-4 px-2 sm:px-4 text-center border-b-2 font-medium text-xs sm:text-sm <?= $activeClass ?> transition-colors duration-200 whitespace-nowrap">
+                            <span class="hidden sm:inline"><?= $label ?></span>
+                            <span class="sm:hidden"><?= explode(' ', $label)[0] ?></span>
                             <?php if ($key == 'pending'): ?>
                                 <?php $count = UsersService::countPending(); ?>
                                 <?php if ($count > 0): ?>
-                                    <span class="ml-2 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs font-bold shadow-sm"><?= $count ?></span>
+                                    <span class="ml-1 sm:ml-2 bg-red-100 text-red-600 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs font-bold shadow-sm"><?= $count ?></span>
                                 <?php endif; ?>
                             <?php endif; ?>
                         </a>
@@ -65,7 +64,8 @@ foreach ($listRoles as $r) {
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Desktop Table -->
+        <div class="hidden md:block bg-white rounded-lg shadow overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -96,9 +96,9 @@ foreach ($listRoles as $r) {
                                         <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
                                             <?= strtoupper(substr($u['nama_lengkap'], 0, 1)) ?>
                                         </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900"><?= htmlspecialchars($u['nama_lengkap']) ?></div>
-                                            <div class="text-sm text-gray-500"><?= htmlspecialchars($u['email']) ?></div>
+                                        <div class="ml-4 min-w-0 flex-1">
+                                            <div class="text-sm font-medium text-gray-900 truncate"><?= htmlspecialchars($u['nama_lengkap']) ?></div>
+                                            <div class="text-sm text-gray-500 truncate"><?= htmlspecialchars($u['email']) ?></div>
                                         </div>
                                     </div>
                                 </td>
@@ -110,7 +110,7 @@ foreach ($listRoles as $r) {
                                         <i class="fas fa-pencil-alt text-gray-300 group-hover:text-blue-500 text-xs transition-colors" title="Ubah Role"></i>
                                     </div>
                                     <?php if (!empty($u['nama_bagian'])): ?>
-                                        <div class="text-xs text-gray-500 mt-1">Bagian: <?= htmlspecialchars($u['nama_bagian']) ?></div>
+                                        <div class="text-xs text-gray-500 mt-1 truncate">Bagian: <?= htmlspecialchars($u['nama_bagian']) ?></div>
                                     <?php endif; ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -158,12 +158,89 @@ foreach ($listRoles as $r) {
                 </table>
             </div>
         </div>
+
+        <!-- Mobile Card View -->
+        <div class="md:hidden space-y-4">
+            <?php if (empty($listUsers)): ?>
+                <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                    <i class="fas fa-users-slash text-5xl mb-3 text-gray-300"></i>
+                    <p>Tidak ada data user ditemukan</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($listUsers as $index => $u): ?>
+                <?php
+                $statusConfig = [
+                    'active' => ['bg' => 'bg-green-100', 'text' => 'text-green-800', 'label' => 'Aktif'],
+                    'pending' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-800', 'label' => 'Pending'],
+                    'rejected' => ['bg' => 'bg-red-100', 'text' => 'text-red-800', 'label' => 'Ditolak'],
+                    'banned' => ['bg' => 'bg-gray-100', 'text' => 'text-gray-800', 'label' => 'Banned']
+                ];
+                $status = $u['status'] ?? 'pending';
+                $config = $statusConfig[$status] ?? $statusConfig['pending'];
+                ?>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-start space-x-3 mb-3">
+                        <div class="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
+                            <?= strtoupper(substr($u['nama_lengkap'], 0, 1)) ?>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($u['nama_lengkap']) ?></h3>
+                            <p class="text-xs text-gray-500 truncate"><?= htmlspecialchars($u['email']) ?></p>
+                            <div class="mt-1">
+                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded <?= $config['bg'] . ' ' . $config['text'] ?>">
+                                    <?= $config['label'] ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 pb-3 border-b border-gray-200">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-600">Role:</span>
+                            <button onclick="changeRole(<?= $u['id'] ?>, <?= $u['id_role'] ?>)" class="text-blue-600 hover:text-blue-800 font-medium">
+                                <?= ucfirst($u['nama_role'] ?? 'User') ?> <i class="fas fa-pencil-alt ml-1"></i>
+                            </button>
+                        </div>
+                        <?php if (!empty($u['nama_bagian'])): ?>
+                        <div class="flex items-center justify-between text-xs mt-1">
+                            <span class="text-gray-600">Bagian:</span>
+                            <span class="font-medium text-gray-900 truncate max-w-[60%]"><?= htmlspecialchars($u['nama_bagian']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ($status === 'pending'): ?>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="updateStatus(<?= $u['id'] ?>, 'approve')" class="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded text-sm font-medium transition-colors">
+                                <i class="fas fa-check mr-1"></i> Terima
+                            </button>
+                            <button onclick="updateStatus(<?= $u['id'] ?>, 'reject')" class="bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded text-sm font-medium transition-colors">
+                                <i class="fas fa-times mr-1"></i> Tolak
+                            </button>
+                        </div>
+                    <?php elseif ($status === 'active'): ?>
+                        <button onclick="deleteUser(<?= $u['id'] ?>)" class="w-full bg-red-50 text-red-600 hover:bg-red-100 py-2 px-3 rounded text-sm font-medium transition-colors">
+                            <i class="fas fa-trash-alt mr-1"></i> Hapus User
+                        </button>
+                    <?php elseif ($status === 'rejected'): ?>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="updateStatus(<?= $u['id'] ?>, 'approve')" class="bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 px-3 rounded text-sm font-medium transition-colors">
+                                <i class="fas fa-undo mr-1"></i> Pulihkan
+                            </button>
+                            <button onclick="deleteUser(<?= $u['id'] ?>)" class="bg-gray-50 text-gray-600 hover:bg-gray-100 py-2 px-3 rounded text-sm font-medium transition-colors">
+                                <i class="fas fa-trash mr-1"></i> Hapus
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-// Data Role dari PHP ke JS
 const availableRoles = <?= json_encode($rolesOptions) ?>;
 
 function changeRole(userId, currentRoleId) {

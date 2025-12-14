@@ -2,15 +2,6 @@
 // public/partials/footer.php
 ?>
 
-<!-- Footer -->
-<!-- <footer class="bg-white border-t border-gray-200 py-4 mt-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p class="text-center text-sm text-gray-500">
-            &copy; <?= date('Y') ?> <?= APP_NAME ?> v<?= APP_VERSION ?>. Bank Kalsel.
-        </p>
-    </div>
-</footer> -->
-
 <!-- Helper Functions -->
 <script>
 // SweetAlert2 helpers
@@ -20,7 +11,9 @@ function showSuccess(message, title = 'Berhasil') {
         title: title,
         text: message,
         timer: 3000,
-        showConfirmButton: false
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
     });
 }
 
@@ -120,15 +113,13 @@ function validateEmail(email) {
 }
 
 function validateFile(file, maxSize = 5242880, allowedExts = ['pdf', 'jpg', 'jpeg', 'png']) {
-    if (!file) return true; // Optional file
+    if (!file) return true;
     
-    // Check size (default 5MB)
     if (file.size > maxSize) {
         showError('Ukuran file maksimal ' + (maxSize / 1048576) + 'MB');
         return false;
     }
     
-    // Check extension
     const ext = file.name.split('.').pop().toLowerCase();
     if (!allowedExts.includes(ext)) {
         showError('Format file harus: ' + allowedExts.join(', '));
@@ -169,7 +160,6 @@ function printPage() {
 
 // Auto-close alerts after certain time
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto dismiss alerts
     setTimeout(function() {
         const alerts = document.querySelectorAll('.alert-dismissible');
         alerts.forEach(alert => {
@@ -179,6 +169,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 5000);
 });
+
+// Responsive helper - detect screen size
+function isMobile() {
+    return window.innerWidth < 640;
+}
+
+function isTablet() {
+    return window.innerWidth >= 640 && window.innerWidth < 1024;
+}
+
+function isDesktop() {
+    return window.innerWidth >= 1024;
+}
 </script>
 
 </body>

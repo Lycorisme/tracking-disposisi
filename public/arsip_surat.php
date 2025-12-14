@@ -24,17 +24,18 @@ $arsipList = SuratService::getArsip($perPage, $offset);
 
 <?php include 'partials/header.php'; ?>
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
     
     <div class="flex-1 lg:ml-64">
-        <main class="p-6 lg:p-8">
-            <div class="mb-6">
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">Arsip Surat</h1>
-                <p class="text-gray-600">Daftar surat yang telah diarsipkan</p>
+        <main class="p-4 sm:p-6 lg:p-8">
+            <div class="mb-4 sm:mb-6">
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Arsip Surat</h1>
+                <p class="text-sm sm:text-base text-gray-600">Daftar surat yang telah diarsipkan</p>
             </div>
             
-            <div class="bg-white rounded-lg shadow overflow-hidden">
+            <!-- Desktop Table View -->
+            <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -108,8 +109,71 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                 </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Mobile Card View -->
+            <div class="lg:hidden space-y-4">
+                <?php if (empty($arsipList)): ?>
+                <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                    <i class="fas fa-archive text-5xl mb-3 text-gray-300"></i>
+                    <p>Belum ada surat yang diarsipkan</p>
+                </div>
+                <?php else: ?>
+                    <?php foreach ($arsipList as $surat): ?>
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="p-4">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-sm font-semibold text-gray-900 truncate"><?= $surat['nomor_agenda'] ?></h3>
+                                    <p class="text-xs text-gray-500"><?= $surat['nomor_surat'] ?></p>
+                                </div>
+                                <span class="ml-2 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full whitespace-nowrap">
+                                    <?= $surat['nama_jenis'] ?>
+                                </span>
+                            </div>
+                            
+                            <p class="text-sm text-gray-700 mb-2 line-clamp-2"><?= $surat['perihal'] ?></p>
+                            
+                            <?php if ($surat['dari_instansi']): ?>
+                            <p class="text-xs text-gray-500 mb-2">
+                                <i class="fas fa-building mr-1"></i>
+                                <?= truncate($surat['dari_instansi'], 40) ?>
+                            </p>
+                            <?php endif; ?>
+                            
+                            <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                                <span><i class="far fa-calendar mr-1"></i><?= formatTanggal($surat['tanggal_surat']) ?></span>
+                                <span><i class="fas fa-archive mr-1"></i><?= formatTanggal($surat['updated_at']) ?></span>
+                            </div>
+                            
+                            <div class="flex space-x-2">
+                                <a href="surat_detail.php?id=<?= $surat['id'] ?>" 
+                                   class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="fas fa-eye mr-1"></i>Detail
+                                </a>
+                                
+                                <?php if ($surat['lampiran_file']): ?>
+                                <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" 
+                                   target="_blank"
+                                   class="flex-1 bg-green-50 text-green-600 hover:bg-green-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="fas fa-file-pdf mr-1"></i>File
+                                </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    
+                    <?php if ($pagination->hasPages()): ?>
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <?= $pagination->render('arsip_surat.php') ?>
+                    </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
         </main>
         
         <?php include 'partials/footer.php'; ?>
     </div>
 </div>
+
+<?php include 'partials/footer.php'; ?>

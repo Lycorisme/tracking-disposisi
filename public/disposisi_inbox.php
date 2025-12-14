@@ -9,52 +9,47 @@ require_once __DIR__ . '/../modules/disposisi/disposisi_service.php';
 
 requireLogin();
 
- $user = getCurrentUser();
- $pageTitle = 'Disposisi Masuk';
+$user = getCurrentUser();
+$pageTitle = 'Disposisi Masuk';
 
-// Get filters
- $filters = [
+$filters = [
     'ke_user_id' => $user['id'],
     'status_disposisi' => $_GET['status'] ?? '',
     'search' => $_GET['search'] ?? ''
 ];
 
-// Pagination
- $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
- $perPage = 10;
- $offset = ($page - 1) * $perPage;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$perPage = 10;
+$offset = ($page - 1) * $perPage;
 
- $totalDisposisi = DisposisiService::count($filters);
- $pagination = new Pagination($totalDisposisi, $perPage, $page);
+$totalDisposisi = DisposisiService::count($filters);
+$pagination = new Pagination($totalDisposisi, $perPage, $page);
 
- $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
+$disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
 ?>
 
 <?php include 'partials/header.php'; ?>
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
     
     <div class="flex-1 lg:ml-64">
-        <main class="p-6 lg:p-8">
-            <!-- Header -->
-            <div class="mb-6">
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">Disposisi Masuk</h1>
-                <p class="text-gray-600">Daftar disposisi yang dikirim kepada Anda</p>
+        <main class="p-4 sm:p-6 lg:p-8">
+            <div class="mb-4 sm:mb-6">
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Disposisi Masuk</h1>
+                <p class="text-sm sm:text-base text-gray-600">Daftar disposisi yang dikirim kepada Anda</p>
             </div>
             
-            <!-- Filters -->
-            <div class="bg-white rounded-lg shadow p-4 mb-6">
-                <form method="GET" class="flex flex-col sm:flex-row gap-2">
-                    <!-- Search -->
+            <!-- Filter Section - Responsive -->
+            <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
+                <form method="GET" class="space-y-3 sm:space-y-0 sm:flex sm:gap-2">
                     <input type="text" 
                            name="search" 
                            value="<?= htmlspecialchars($filters['search']) ?>"
                            placeholder="Cari nomor surat, perihal..." 
-                           class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                           class="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                     
-                    <!-- Status Filter -->
-                    <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <select name="status" class="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                         <option value="">Semua Status</option>
                         <option value="dikirim" <?= $filters['status_disposisi'] == 'dikirim' ? 'selected' : '' ?>>Dikirim</option>
                         <option value="diterima" <?= $filters['status_disposisi'] == 'diterima' ? 'selected' : '' ?>>Diterima</option>
@@ -63,20 +58,22 @@ requireLogin();
                         <option value="ditolak" <?= $filters['status_disposisi'] == 'ditolak' ? 'selected' : '' ?>>Ditolak</option>
                     </select>
                     
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    
-                    <?php if (!empty($filters['search']) || !empty($filters['status_disposisi'])): ?>
-                    <a href="disposisi_inbox.php" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-times"></i>
-                    </a>
-                    <?php endif; ?>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            <i class="fas fa-search"></i><span class="ml-2 sm:hidden">Cari</span>
+                        </button>
+                        
+                        <?php if (!empty($filters['search']) || !empty($filters['status_disposisi'])): ?>
+                        <a href="disposisi_inbox.php" class="flex-1 sm:flex-none bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium text-center">
+                            <i class="fas fa-times"></i><span class="ml-2 sm:hidden">Reset</span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </form>
             </div>
             
-            <!-- Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
+            <!-- Desktop Table View -->
+            <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -144,11 +141,72 @@ requireLogin();
                     </table>
                 </div>
                 
-                <!-- Pagination -->
                 <?php if ($pagination->hasPages()): ?>
                 <div class="border-t border-gray-200">
                     <?= $pagination->render('disposisi_inbox.php', ['status' => $filters['status_disposisi'], 'search' => $filters['search']]) ?>
                 </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="lg:hidden space-y-4">
+                <?php if (empty($disposisiList)): ?>
+                <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                    <i class="fas fa-inbox text-5xl mb-3 text-gray-300"></i>
+                    <p>Tidak ada disposisi masuk</p>
+                </div>
+                <?php else: ?>
+                    <?php foreach ($disposisiList as $disp): ?>
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full <?= getDisposisiStatusBadge($disp['status_disposisi']) ?>">
+                                    <?= ucfirst($disp['status_disposisi']) ?>
+                                </span>
+                                <span class="text-xs text-gray-500">
+                                    <i class="fas fa-user mr-1"></i><?= $disp['dari_user_nama'] ?>
+                                </span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <p class="text-sm font-semibold text-gray-900"><?= $disp['nomor_agenda'] ?></p>
+                                <p class="text-xs text-gray-500 line-clamp-2"><?= $disp['perihal'] ?></p>
+                            </div>
+                            
+                            <?php if ($disp['catatan']): ?>
+                            <div class="mb-3 p-2 bg-gray-50 rounded text-xs text-gray-700">
+                                <i class="fas fa-comment-dots mr-1"></i>
+                                <?= truncate($disp['catatan'], 100) ?>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="text-xs text-gray-500 mb-3">
+                                <i class="far fa-clock mr-1"></i>
+                                <?= formatDateTime($disp['tanggal_disposisi']) ?>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
+                                   class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="fas fa-eye mr-1"></i>Lihat
+                                </a>
+                                
+                                <?php if ($disp['status_disposisi'] === 'dikirim' || $disp['status_disposisi'] === 'diterima' || $disp['status_disposisi'] === 'diproses'): ?>
+                                <button onclick='openUpdateModal(<?= json_encode($disp) ?>)' 
+                                        class="flex-1 bg-green-50 text-green-600 hover:bg-green-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="fas fa-check-circle mr-1"></i>Update
+                                </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    
+                    <?php if ($pagination->hasPages()): ?>
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <?= $pagination->render('disposisi_inbox.php', ['status' => $filters['status_disposisi'], 'search' => $filters['search']]) ?>
+                    </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </main>
@@ -157,12 +215,12 @@ requireLogin();
     </div>
 </div>
 
-<!-- Modal Update Status -->
+<!-- Modal Update Status - Responsive -->
 <div id="updateModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-800">Update Status Disposisi</h3>
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-800">Update Status Disposisi</h3>
             </div>
             
             <form id="updateDisposisiForm" method="POST">
@@ -170,16 +228,14 @@ requireLogin();
                 <input type="hidden" name="id" id="disposisiId">
                 <input type="hidden" name="redirect" value="disposisi_inbox.php">
                 
-                <div class="px-6 py-4 space-y-4">
-                    <!-- Info Surat -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p class="text-sm text-gray-600 mb-1">Nomor Agenda:</p>
-                        <p class="font-semibold text-gray-800" id="modalNomorAgenda"></p>
-                        <p class="text-sm text-gray-600 mt-2 mb-1">Perihal:</p>
-                        <p class="text-sm text-gray-800" id="modalPerihal"></p>
+                <div class="px-4 sm:px-6 py-4 space-y-4">
+                    <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                        <p class="text-xs sm:text-sm text-gray-600 mb-1">Nomor Agenda:</p>
+                        <p class="text-sm sm:text-base font-semibold text-gray-800" id="modalNomorAgenda"></p>
+                        <p class="text-xs sm:text-sm text-gray-600 mt-2 mb-1">Perihal:</p>
+                        <p class="text-xs sm:text-sm text-gray-800" id="modalPerihal"></p>
                     </div>
                     
-                    <!-- Status -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
                         <select name="status" id="statusSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -190,7 +246,6 @@ requireLogin();
                         </select>
                     </div>
                     
-                    <!-- Catatan -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Tambahan</label>
                         <textarea name="catatan" rows="3" 
@@ -199,13 +254,13 @@ requireLogin();
                     </div>
                 </div>
                 
-                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-2">
                     <button type="button" onclick="closeUpdateModal()" 
-                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                         Batal
                     </button>
                     <button type="submit" 
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                            class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                         Update Status
                     </button>
                 </div>
@@ -215,7 +270,6 @@ requireLogin();
 </div>
 
 <script>
-// Set correct path untuk disposisi handler
 const disposisiHandlerPath = '../modules/disposisi/disposisi_handler.php';
 
 function openUpdateModal(disposisi) {
@@ -232,7 +286,6 @@ function openUpdateModal(disposisi) {
         statusSelect.value = 'selesai';
     }
     
-    // Set form action dengan path yang benar
     document.getElementById('updateDisposisiForm').action = disposisiHandlerPath;
     document.getElementById('updateModal').classList.remove('hidden');
 }
@@ -246,4 +299,10 @@ document.addEventListener('keydown', function(e) {
         closeUpdateModal();
     }
 });
+
+document.getElementById('updateModal').addEventListener('click', function(e) {
+    if (e.target === this) closeUpdateModal();
+});
 </script>
+
+<?php include 'partials/footer.php'; ?>

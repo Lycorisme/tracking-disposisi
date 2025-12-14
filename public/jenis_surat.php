@@ -17,22 +17,23 @@ $jenisSuratList = JenisSuratService::getAll();
 
 <?php include 'partials/header.php'; ?>
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen bg-gray-50">
     <?php include 'partials/sidebar.php'; ?>
     
     <div class="flex-1 lg:ml-64">
-        <main class="p-6 lg:p-8">
-            <div class="mb-6 flex items-center justify-between">
+        <main class="p-4 sm:p-6 lg:p-8">
+            <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">Master Jenis Surat</h1>
-                    <p class="text-gray-600">Kelola jenis-jenis surat</p>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Master Jenis Surat</h1>
+                    <p class="text-sm sm:text-base text-gray-600">Kelola jenis-jenis surat</p>
                 </div>
-                <button onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                <button onclick="openAddModal()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
                     <i class="fas fa-plus mr-2"></i>Tambah Jenis
                 </button>
             </div>
             
-            <div class="bg-white rounded-lg shadow overflow-hidden">
+            <!-- Desktop Table View -->
+            <div class="hidden md:block bg-white rounded-lg shadow overflow-hidden">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
@@ -81,24 +82,63 @@ $jenisSuratList = JenisSuratService::getAll();
                     </tbody>
                 </table>
             </div>
+
+            <!-- Mobile Card View -->
+            <div class="md:hidden space-y-4">
+                <?php if (empty($jenisSuratList)): ?>
+                <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                    Tidak ada data jenis surat
+                </div>
+                <?php else: ?>
+                    <?php foreach ($jenisSuratList as $index => $jenis): ?>
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                        <?= $index + 1 ?>
+                                    </span>
+                                    <h3 class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($jenis['nama_jenis']) ?></h3>
+                                </div>
+                                <p class="text-xs text-gray-600 ml-8"><?= htmlspecialchars($jenis['keterangan'] ?? '-') ?></p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2 ml-8">
+                            <button onclick='openEditModal(<?= json_encode($jenis) ?>)' 
+                                    class="flex-1 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </button>
+                            <?php if (hasRole('superadmin')): ?>
+                            <button onclick="deleteJenis(<?= $jenis['id'] ?>)" 
+                                    class="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                <i class="fas fa-trash mr-1"></i>Hapus
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
         </main>
         
         <?php include 'partials/footer.php'; ?>
     </div>
 </div>
 
+<!-- Modal Add/Edit - Responsive -->
 <div id="jenisModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 id="modalTitle" class="text-lg font-semibold text-gray-800">Tambah Jenis Surat</h3>
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <h3 id="modalTitle" class="text-base sm:text-lg font-semibold text-gray-800">Tambah Jenis Surat</h3>
             </div>
             
             <form id="jenisForm" method="POST" action="../modules/jenis_surat/jenis_surat_handler.php">
                 <input type="hidden" name="action" id="formAction" value="create">
                 <input type="hidden" name="id" id="jenisId">
                 
-                <div class="px-6 py-4 space-y-4">
+                <div class="px-4 sm:px-6 py-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Nama Jenis *</label>
                         <input type="text" name="nama_jenis" id="nama_jenis" required 
@@ -112,13 +152,13 @@ $jenisSuratList = JenisSuratService::getAll();
                     </div>
                 </div>
                 
-                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-2">
                     <button type="button" onclick="closeModal()" 
-                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                         Batal
                     </button>
                     <button type="submit" 
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                            class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                         Simpan
                     </button>
                 </div>
@@ -128,7 +168,6 @@ $jenisSuratList = JenisSuratService::getAll();
 </div>
 
 <script>
-// Path handler yang benar (Relatif terhadap file public/jenis_surat.php)
 const handlerPath = '../modules/jenis_surat/jenis_surat_handler.php';
 
 function openAddModal() {
@@ -136,7 +175,6 @@ function openAddModal() {
     document.getElementById('formAction').value = 'create';
     document.getElementById('jenisForm').reset();
     document.getElementById('jenisId').value = '';
-    // Set action URL manual
     document.getElementById('jenisForm').action = handlerPath;
     document.getElementById('jenisModal').classList.remove('hidden');
 }
@@ -147,7 +185,6 @@ function openEditModal(jenis) {
     document.getElementById('jenisId').value = jenis.id;
     document.getElementById('nama_jenis').value = jenis.nama_jenis;
     document.getElementById('keterangan').value = jenis.keterangan || '';
-    // Set action URL manual
     document.getElementById('jenisForm').action = handlerPath;
     document.getElementById('jenisModal').classList.remove('hidden');
 }
@@ -156,7 +193,6 @@ function closeModal() {
     document.getElementById('jenisModal').classList.add('hidden');
 }
 
-// Fungsi Hapus tanpa SweetAlert (Menggunakan native confirm)
 function deleteJenis(id) {
     if (confirm('Apakah Anda yakin ingin menghapus jenis surat ini?')) {
         const form = document.createElement('form');
@@ -185,4 +221,10 @@ document.addEventListener('keydown', function(e) {
         closeModal();
     }
 });
+
+document.getElementById('jenisModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
 </script>
+
+<?php include 'partials/footer.php'; ?>
