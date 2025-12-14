@@ -18,14 +18,11 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
 
-// Hitung total data (Anda perlu menambahkan method count() di Service jika belum ada)
-// Jika method count() belum ada, kita hitung manual dari getAll()
+// Hitung total data
 $allData = JenisSuratService::getAll(); 
 $totalData = count($allData);
 
-// Ambil data untuk halaman ini (Manual slicing jika Service belum support limit/offset)
-// Idealnya Service::getAll() support parameter limit & offset. 
-// Di sini saya gunakan array_slice agar aman tanpa mengubah Service.
+// Ambil data untuk halaman ini (Manual slicing)
 $jenisSuratList = array_slice($allData, $offset, $perPage);
 
 $pagination = new Pagination($totalData, $perPage, $page);
@@ -160,7 +157,7 @@ $pagination = new Pagination($totalData, $perPage, $page);
             <h3 id="modalTitle" class="text-base sm:text-lg font-semibold text-gray-800">Tambah Jenis Surat</h3>
         </div>
         
-        <form id="jenisForm" method="POST" action="../modules/jenis_surat/jenis_surat_handler.php">
+        <form id="jenisForm">
             <input type="hidden" name="action" id="formAction" value="create">
             <input type="hidden" name="id" id="jenisId">
             
@@ -183,7 +180,7 @@ $pagination = new Pagination($totalData, $perPage, $page);
                         class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                     Batal
                 </button>
-                <button type="submit" 
+                <button type="submit" id="btnSave"
                         class="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
                     Simpan
                 </button>
@@ -192,15 +189,16 @@ $pagination = new Pagination($totalData, $perPage, $page);
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-const handlerPath = '../modules/jenis_surat/jenis_surat_handler.php';
+// Path ke Handler
+const handlerUrl = '../modules/jenis_surat/jenis_surat_handler.php';
 
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Tambah Jenis Surat';
     document.getElementById('formAction').value = 'create';
     document.getElementById('jenisForm').reset();
     document.getElementById('jenisId').value = '';
-    document.getElementById('jenisForm').action = handlerPath;
     document.getElementById('jenisModal').classList.remove('hidden');
 }
 
@@ -210,7 +208,6 @@ function openEditModal(jenis) {
     document.getElementById('jenisId').value = jenis.id;
     document.getElementById('nama_jenis').value = jenis.nama_jenis;
     document.getElementById('keterangan').value = jenis.keterangan || '';
-    document.getElementById('jenisForm').action = handlerPath;
     document.getElementById('jenisModal').classList.remove('hidden');
 }
 
@@ -219,27 +216,76 @@ function closeModal() {
 }
 
 function deleteJenis(id) {
-    if (confirm('Apakah Anda yakin ingin menghapus jenis surat ini?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = handlerPath;
-        
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'delete';
-        
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'id';
-        idInput.value = id;
-        
-        form.appendChild(actionInput);
-        form.appendChild(idInput);
-        document.body.appendChild(form);
-        form.submit();
-    }
+    Swal.fire({
+        title: 'Hapus Jenis Surat?',
+        text: 'Data yang dihapus tidak bisa dikembalikan!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Hapus'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // AJAX Delete
+            $.post(handlerUrl, { action: 'delete', id: id }, function(response) {
+                if(response.status === 'success') {
+                    Swal.fire('Terhapus!', response.message, 'success')
+                        .then(() => location.reload()); // Reload agar tabel terupdate
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            }, 'json').fail(function() {
+                Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
+            });
+        }
+    });
 }
+
+// Handle Form Submit via AJAX
+$('#jenisForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    // Validasi Sederhana
+    const namaJenis = $('#nama_jenis').val().trim();
+    if (!namaJenis) {
+        Swal.fire('Validasi', 'Nama jenis surat harus diisi', 'warning');
+        return;
+    }
+
+    const formData = $(this).serialize();
+    const btn = $('#btnSave');
+    const originalText = btn.html();
+    
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...');
+
+    $.ajax({
+        url: handlerUrl,
+        type: 'POST',
+        data: formData,
+        dataType: 'json',
+        success: function(response) {
+            btn.prop('disabled', false).html(originalText);
+            
+            if (response.status === 'success') {
+                closeModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: response.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire('Gagal', response.message, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            btn.prop('disabled', false).html(originalText);
+            console.error(xhr.responseText);
+            Swal.fire('Error', 'Terjadi kesalahan sistem. Cek console log.', 'error');
+        }
+    });
+});
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {

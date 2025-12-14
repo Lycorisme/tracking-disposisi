@@ -17,17 +17,15 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10; // Jumlah data per halaman
 $offset = ($page - 1) * $limit;
 
-// Ambil semua data dulu (karena method getAll di service belum support pagination langsung)
-// Idealnya, Service harus diupdate untuk support LIMIT & OFFSET. 
-// Namun untuk solusi cepat tanpa mengubah Service secara drastis, kita slice array di sini.
+// Ambil semua data (karena method getAll di service belum support pagination langsung)
 $allUsers = UsersService::getAll($currentStatus);
 $totalData = count($allUsers);
 $totalPages = ceil($totalData / $limit);
 
-// Ambil data untuk halaman saat ini
+// Slice array untuk pagination halaman ini
 $listUsers = array_slice($allUsers, $offset, $limit);
 
-// Data Role untuk Dropdown Edit
+// Data Role untuk Dropdown Edit (JS)
 $listRoles = UsersService::getRoles(); 
 $rolesOptions = [];
 foreach ($listRoles as $r) {
@@ -40,31 +38,30 @@ foreach ($listRoles as $r) {
 <div class="flex min-h-screen bg-gray-100">
     <?php include 'partials/sidebar.php'; ?>
 
-    <div class="flex-1 lg:ml-64 p-6 lg:p-8">
+    <div class="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8 transition-all duration-300">
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Manajemen Pengguna</h1>
-            <p class="text-gray-600">Kelola pendaftaran, hak akses, dan role pengguna</p>
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Manajemen Pengguna</h1>
+            <p class="text-sm sm:text-base text-gray-600">Kelola pendaftaran, hak akses, dan role pengguna</p>
         </div>
 
-        <div class="bg-white rounded-lg shadow mb-6">
-            <div class="border-b border-gray-200">
-                <nav class="flex -mb-px">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 mb-6">
+            <div class="border-b border-gray-200 overflow-x-auto scrollbar-hide">
+                <nav class="flex -mb-px min-w-max px-2">
                     <?php
                     $tabs = [
                         'all' => 'Semua User',
-                        'pending' => 'Menunggu Persetujuan',
+                        'pending' => 'Menunggu',
                         'active' => 'Aktif',
                         'rejected' => 'Ditolak'
                     ];
                     
                     foreach ($tabs as $key => $label): 
                         $isActive = ($currentStatus == $key);
-                        // TEMA DINAMIS DI SINI: border-primary-500, text-primary-600
                         $activeClass = $isActive 
                             ? 'border-primary-500 text-primary-600' 
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
                     ?>
-                        <a href="?status=<?= $key ?>" class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm <?= $activeClass ?> transition-colors duration-200">
+                        <a href="?status=<?= $key ?>" class="whitespace-nowrap py-4 px-4 text-center border-b-2 font-medium text-sm <?= $activeClass ?> transition-colors duration-200 flex items-center">
                             <?= $label ?>
                             <?php if ($key == 'pending'): ?>
                                 <?php $count = UsersService::countPending(); ?>
@@ -78,7 +75,7 @@ foreach ($listRoles as $r) {
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="hidden md:block bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -94,8 +91,10 @@ foreach ($listRoles as $r) {
                         <?php if (empty($listUsers)): ?>
                             <tr>
                                 <td colspan="5" class="px-6 py-10 text-center text-gray-500 italic">
-                                    <i class="fas fa-users-slash text-4xl mb-2 text-gray-300 block"></i>
-                                    Tidak ada data user ditemukan.
+                                    <div class="flex flex-col items-center">
+                                        <i class="fas fa-users-slash text-4xl mb-3 text-gray-300"></i>
+                                        <span>Tidak ada data user ditemukan.</span>
+                                    </div>
                                 </td>
                             </tr>
                         <?php else: ?>
@@ -122,9 +121,10 @@ foreach ($listRoles as $r) {
                                         </span>
                                         <i class="fas fa-pencil-alt text-gray-300 group-hover:text-primary-500 text-xs transition-colors" title="Ubah Role"></i>
                                     </div>
-                                    <?php if (!empty($u['nama_bagian'])): ?>
-                                        <div class="text-xs text-gray-500 mt-1">Bagian: <?= htmlspecialchars($u['nama_bagian']) ?></div>
-                                    <?php endif; ?>
+                                    <?php 
+                                        $bagian = !empty($u['nama_bagian_custom']) ? $u['nama_bagian_custom'] : ($u['nama_bagian'] ?? '-');
+                                    ?>
+                                    <div class="text-xs text-gray-500 mt-1">Bagian: <?= htmlspecialchars($bagian) ?></div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <?php
@@ -170,64 +170,115 @@ foreach ($listRoles as $r) {
                     </tbody>
                 </table>
             </div>
-            
-            <?php if ($totalPages > 1): ?>
-            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm text-gray-700">
-                            Menampilkan
-                            <span class="font-medium"><?= $offset + 1 ?></span>
-                            sampai
-                            <span class="font-medium"><?= min($offset + $limit, $totalData) ?></span>
-                            dari
-                            <span class="font-medium"><?= $totalData ?></span>
-                            hasil
-                        </p>
-                    </div>
-                    <div>
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                            <?php if ($page > 1): ?>
-                            <a href="?status=<?= $currentStatus ?>&page=<?= $page - 1 ?>" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                <span class="sr-only">Previous</span>
-                                <i class="fas fa-chevron-left h-5 w-5"></i>
-                            </a>
-                            <?php else: ?>
-                            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                                <span class="sr-only">Previous</span>
-                                <i class="fas fa-chevron-left h-5 w-5"></i>
-                            </span>
-                            <?php endif; ?>
+        </div>
 
-                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                <?php if ($i == $page): ?>
-                                    <span aria-current="page" class="z-10 bg-primary-50 border-primary-500 text-primary-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                                        <?= $i ?>
-                                    </span>
-                                <?php else: ?>
-                                    <a href="?status=<?= $currentStatus ?>&page=<?= $i ?>" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                                        <?= $i ?>
-                                    </a>
-                                <?php endif; ?>
-                            <?php endfor; ?>
-
-                            <?php if ($page < $totalPages): ?>
-                            <a href="?status=<?= $currentStatus ?>&page=<?= $page + 1 ?>" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                <span class="sr-only">Next</span>
-                                <i class="fas fa-chevron-right h-5 w-5"></i>
-                            </a>
-                            <?php else: ?>
-                            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                                <span class="sr-only">Next</span>
-                                <i class="fas fa-chevron-right h-5 w-5"></i>
-                            </span>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+        <div class="md:hidden space-y-4">
+            <?php if (empty($listUsers)): ?>
+                <div class="bg-white rounded-lg shadow-sm p-8 text-center text-gray-500">
+                    <i class="fas fa-users-slash text-4xl mb-3 text-gray-300"></i>
+                    <p>Tidak ada data user ditemukan.</p>
                 </div>
-            </div>
+            <?php else: ?>
+                <?php foreach ($listUsers as $u): ?>
+                    <?php
+                        $status = $u['status'] ?? 'pending';
+                        $config = $statusConfig[$status] ?? $statusConfig['pending'];
+                        $bagian = !empty($u['nama_bagian_custom']) ? $u['nama_bagian_custom'] : ($u['nama_bagian'] ?? '-');
+                    ?>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold text-sm shrink-0">
+                                    <?= strtoupper(substr($u['nama_lengkap'], 0, 1)) ?>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-800 text-sm"><?= htmlspecialchars($u['nama_lengkap']) ?></h3>
+                                    <p class="text-xs text-gray-500"><?= htmlspecialchars($u['email']) ?></p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-[10px] font-bold <?= $config['bg'] . ' ' . $config['text'] ?>">
+                                <?= $config['label'] ?>
+                            </span>
+                        </div>
+
+                        <div class="mb-4 pl-[3.25rem] space-y-1">
+                            <div class="flex items-center text-xs text-gray-600">
+                                <span class="font-medium w-12">Role:</span> 
+                                <span class="bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                                    <?= ucfirst($u['nama_role'] ?? 'User') ?>
+                                </span>
+                                <button onclick="changeRole(<?= $u['id'] ?>, <?= $u['id_role'] ?>)" class="ml-2 text-primary-600 hover:text-primary-800">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                            </div>
+                            <div class="flex items-center text-xs text-gray-600">
+                                <span class="font-medium w-12">Bagian:</span> 
+                                <span class="text-gray-500"><?= htmlspecialchars($bagian) ?></span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 border-t pt-3">
+                            <?php if ($status === 'pending'): ?>
+                                <button onclick="updateStatus(<?= $u['id'] ?>, 'approve')" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg text-xs font-medium">
+                                    <i class="fas fa-check mr-1"></i> Terima
+                                </button>
+                                <button onclick="updateStatus(<?= $u['id'] ?>, 'reject')" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-xs font-medium">
+                                    <i class="fas fa-times mr-1"></i> Tolak
+                                </button>
+                            <?php elseif ($status === 'active'): ?>
+                                <button onclick="deleteUser(<?= $u['id'] ?>)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-xs font-medium transition-colors">
+                                    <i class="fas fa-trash-alt mr-1"></i> Hapus User
+                                </button>
+                            <?php elseif ($status === 'rejected'): ?>
+                                <button onclick="updateStatus(<?= $u['id'] ?>, 'approve')" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded-lg text-xs font-medium">
+                                    <i class="fas fa-undo mr-1"></i> Pulihkan
+                                </button>
+                                <button onclick="deleteUser(<?= $u['id'] ?>)" class="bg-gray-100 hover:bg-gray-200 text-gray-500 py-2 px-3 rounded-lg text-xs font-medium">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             <?php endif; ?>
         </div>
+        
+        <?php if ($totalPages > 1): ?>
+        <div class="mt-6 flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100 gap-4">
+            <div class="text-sm text-gray-600">
+                Halaman <span class="font-medium"><?= $page ?></span> dari <span class="font-medium"><?= $totalPages ?></span>
+            </div>
+            
+            <nav class="flex gap-2">
+                <?php if ($page > 1): ?>
+                <a href="?status=<?= $currentStatus ?>&page=<?= $page - 1 ?>" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Previous
+                </a>
+                <?php endif; ?>
+
+                <div class="hidden sm:flex gap-1">
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <?php if ($i == $page): ?>
+                            <span class="px-3 py-1.5 border border-primary-500 bg-primary-50 text-primary-600 rounded-md text-sm font-medium">
+                                <?= $i ?>
+                            </span>
+                        <?php else: ?>
+                            <a href="?status=<?= $currentStatus ?>&page=<?= $i ?>" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium">
+                                <?= $i ?>
+                            </a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                </div>
+
+                <?php if ($page < $totalPages): ?>
+                <a href="?status=<?= $currentStatus ?>&page=<?= $page + 1 ?>" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Next
+                </a>
+                <?php endif; ?>
+            </nav>
+        </div>
+        <?php endif; ?>
+
     </div>
 </div>
 

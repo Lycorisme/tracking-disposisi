@@ -16,129 +16,103 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $user = getCurrentUser();
 
 try {
-    switch ($action) {
-        // --- HANDLER UPDATE PROFIL (VIA AJAX) ---
-        case 'update_profile':
-            // 1. Tangkap Input
-            $data = [
-                'nama_lengkap' => sanitize($_POST['nama_lengkap']),
-                'email' => sanitize($_POST['email']),
-                // Tangkap input 'nama_bagian_custom'. Jika kosong string, biarkan string kosong agar di service bisa dicek.
-                'nama_bagian_custom' => isset($_POST['nama_bagian_custom']) ? sanitize($_POST['nama_bagian_custom']) : ''
-            ];
-            
-            // 2. Validasi
-            if (empty($data['nama_lengkap']) || empty($data['email'])) {
-                throw new Exception('Nama dan email harus diisi');
-            }
-            
-            // 3. Cek Email Kembar
-            if (UsersService::emailExists($data['email'], $user['id'])) {
-                throw new Exception('Email sudah digunakan oleh user lain');
-            }
-            
-            // 4. Update Database
-            if (!UsersService::updateProfile($user['id'], $data)) {
-                throw new Exception('Gagal mengupdate database');
-            }
-            
-            // 5. Update Session (Opsional, nama & email tetap diupdate)
-            $_SESSION['nama_lengkap'] = $data['nama_lengkap'];
-            $_SESSION['email'] = $data['email'];
-            
-            // 6. Log Aktivitas
-            logActivity($user['id'], 'update_profil', 'Mengupdate profil');
-            
-            // 7. RETURN JSON
-            echo json_encode([
-                'status' => 'success', 
-                'message' => 'Profil berhasil diperbarui',
-                'data' => $data
-            ]);
-            exit;
-
-        // --- HANDLER GANTI PASSWORD ---
-        case 'change_password':
-            $passwordLama = $_POST['password_lama'];
-            $passwordBaru = $_POST['password_baru'];
-            $passwordKonfirmasi = $_POST['password_konfirmasi'];
-            
-            if (empty($passwordLama) || empty($passwordBaru) || empty($passwordKonfirmasi)) {
-                throw new Exception('Semua field password harus diisi');
-            }
-            
-            $currentUser = UsersService::getById($user['id']);
-            
-            if ($passwordLama !== $currentUser['password']) {
-                throw new Exception('Password lama tidak sesuai');
-            }
-            
-            if ($passwordBaru !== $passwordKonfirmasi) {
-                throw new Exception('Password baru dan konfirmasi tidak cocok');
-            }
-            
-            if (strlen($passwordBaru) < 6) {
-                throw new Exception('Password baru minimal 6 karakter');
-            }
-            
-            if (!UsersService::changePassword($user['id'], $passwordBaru)) {
-                throw new Exception('Gagal mengupdate password');
-            }
-
-            logActivity($user['id'], 'ganti_password', 'Mengganti password');
-            
-            echo json_encode([
-                'status' => 'success', 
-                'message' => 'Password berhasil diubah'
-            ]);
-            exit;
-
-        // --- HANDLER ADMIN ---
-        case 'approve':
-        case 'reject':
-        case 'delete':
-        case 'change_role':
-            if (!hasRole('superadmin')) throw new Exception('Akses ditolak.');
-            
-            $targetId = $_POST['id'] ?? 0;
-            if (!$targetId) throw new Exception('ID tidak valid');
-
-            $success = false;
-            $msg = '';
-
-            if ($action === 'approve') {
-                $success = UsersService::updateStatus($targetId, 'active');
-                $msg = 'User berhasil diaktifkan';
-            } elseif ($action === 'reject') {
-                $success = UsersService::updateStatus($targetId, 'rejected');
-                $msg = 'User berhasil ditolak';
-            } elseif ($action === 'delete') {
-                if ($targetId == $user['id']) throw new Exception('Tidak bisa menghapus akun sendiri');
-                $success = UsersService::delete($targetId);
-                $msg = 'User berhasil dihapus';
-            } elseif ($action === 'change_role') {
-                if ($targetId == $user['id']) throw new Exception('Tidak bisa mengubah role sendiri');
-                $roleId = $_POST['role_id'] ?? 0;
-                $success = UsersService::updateRole($targetId, $roleId);
-                $msg = 'Role berhasil diperbarui';
-            }
-
-            if ($success) {
-                echo json_encode(['status' => 'success', 'message' => $msg]);
-            } else {
-                throw new Exception('Gagal memproses permintaan');
-            }
-            exit;
-
-        default:
-            throw new Exception('Action tidak valid');
+    // --- HANDLER UPDATE PROFIL (VIA AJAX) ---
+    if ($action === 'update_profile') {
+        $data = [
+            'nama_lengkap' => sanitize($_POST['nama_lengkap']),
+            'email' => sanitize($_POST['email']),
+            'nama_bagian_custom' => sanitize($_POST['nama_bagian_custom'] ?? '')
+        ];
+        
+        if (empty($data['nama_lengkap']) || empty($data['email'])) throw new Exception('Nama dan email harus diisi');
+        if (UsersService::emailExists($data['email'], $user['id'])) throw new Exception('Email sudah digunakan oleh user lain');
+        
+        if (!UsersService::updateProfile($user['id'], $data)) throw new Exception('Gagal mengupdate database');
+        
+        $_SESSION['nama_lengkap'] = $data['nama_lengkap'];
+        $_SESSION['email'] = $data['email'];
+        logActivity($user['id'], 'update_profil', 'Mengupdate profil');
+        
+        echo json_encode(['status' => 'success', 'message' => 'Profil berhasil diperbarui', 'data' => $data]);
+        exit;
     }
     
+    // --- HANDLER GANTI PASSWORD ---
+    if ($action === 'change_password') {
+        // ... (Kode sama seperti sebelumnya) ...
+        $passwordLama = $_POST['password_lama'];
+        $passwordBaru = $_POST['password_baru'];
+        $passwordKonfirmasi = $_POST['password_konfirmasi'];
+        
+        if (empty($passwordLama) || empty($passwordBaru) || empty($passwordKonfirmasi)) throw new Exception('Semua field password harus diisi');
+        
+        $currentUser = UsersService::getById($user['id']);
+        if ($passwordLama !== $currentUser['password']) throw new Exception('Password lama tidak sesuai');
+        if ($passwordBaru !== $passwordKonfirmasi) throw new Exception('Password baru tidak cocok');
+        if (strlen($passwordBaru) < 6) throw new Exception('Password minimal 6 karakter');
+        
+        if (!UsersService::changePassword($user['id'], $passwordBaru)) throw new Exception('Gagal mengupdate password');
+        
+        logActivity($user['id'], 'ganti_password', 'Mengganti password');
+        echo json_encode(['status' => 'success', 'message' => 'Password berhasil diubah']);
+        exit;
+    }
+
+    // ============================================================================
+    // HANDLER KHUSUS ADMIN
+    // ============================================================================
+    if (in_array($action, ['approve', 'reject', 'delete', 'change_role', 'check_activity'])) {
+        
+        if (!hasRole('superadmin')) throw new Exception('Akses ditolak. Hanya Superadmin.');
+        
+        $targetId = $_POST['id'] ?? 0;
+        if (!$targetId) throw new Exception('ID User tidak valid');
+
+        switch ($action) {
+            // --- CEK AKTIVITAS SEBELUM HAPUS ---
+            case 'check_activity':
+                $hasData = UsersService::hasRelatedData($targetId);
+                echo json_encode(['status' => 'success', 'has_data' => $hasData]);
+                break;
+
+            case 'approve':
+                if (UsersService::updateStatus($targetId, 'active')) {
+                    echo json_encode(['status' => 'success', 'message' => 'User berhasil diaktifkan']);
+                } else { throw new Exception('Gagal mengaktifkan user'); }
+                break;
+
+            case 'reject':
+                if (UsersService::updateStatus($targetId, 'rejected')) {
+                    echo json_encode(['status' => 'success', 'message' => 'User berhasil ditolak']);
+                } else { throw new Exception('Gagal menolak user'); }
+                break;
+
+            case 'delete':
+                if ($targetId == $user['id']) throw new Exception('Tidak dapat menghapus akun sendiri.');
+                
+                // Panggil fungsi delete yang sudah di-update di Service (Manual Cascade)
+                if (UsersService::delete($targetId)) {
+                    echo json_encode(['status' => 'success', 'message' => 'User dan semua data terkait berhasil dihapus']);
+                } else {
+                    throw new Exception('Gagal menghapus user. Terjadi kesalahan sistem.');
+                }
+                break;
+
+            case 'change_role':
+                if ($targetId == $user['id']) throw new Exception('Tidak dapat mengubah role akun sendiri.');
+                $roleId = $_POST['role_id'] ?? 0;
+                if (UsersService::updateRole($targetId, $roleId)) {
+                    echo json_encode(['status' => 'success', 'message' => 'Role berhasil diperbarui']);
+                } else { throw new Exception('Gagal memperbarui role'); }
+                break;
+        }
+        exit;
+    }
+
+    throw new Exception('Action tidak valid');
+
 } catch (Exception $e) {
-    echo json_encode([
-        'status' => 'error', 
-        'message' => $e->getMessage()
-    ]);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     exit;
 }
 ?>

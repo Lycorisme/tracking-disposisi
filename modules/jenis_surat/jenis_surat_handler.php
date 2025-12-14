@@ -7,7 +7,15 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/jenis_surat_service.php';
 
-requireLogin();
+// Set Header JSON agar browser tahu ini bukan halaman HTML
+header('Content-Type: application/json');
+
+// Pastikan login
+if (!isLoggedIn()) {
+    echo json_encode(['status' => 'error', 'message' => 'Anda harus login']);
+    exit;
+}
+
 requireRole(['admin', 'superadmin']);
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -28,9 +36,7 @@ try {
             JenisSuratService::create($data);
             logActivity($user['id'], 'tambah_jenis_surat', "Menambah jenis surat: {$data['nama_jenis']}");
             
-            setFlash('success', 'Jenis surat berhasil ditambahkan');
-            // Redirect menggunakan BASE_URL agar path absolut dan aman
-            redirect(BASE_URL . '/jenis_surat.php?success=added');
+            echo json_encode(['status' => 'success', 'message' => 'Jenis surat berhasil ditambahkan']);
             break;
             
         case 'update':
@@ -47,8 +53,7 @@ try {
             JenisSuratService::update($id, $data);
             logActivity($user['id'], 'edit_jenis_surat', "Mengedit jenis surat ID: {$id}");
             
-            setFlash('success', 'Jenis surat berhasil diperbarui');
-            redirect(BASE_URL . '/jenis_surat.php?success=updated');
+            echo json_encode(['status' => 'success', 'message' => 'Jenis surat berhasil diperbarui']);
             break;
             
         case 'delete':
@@ -58,8 +63,7 @@ try {
             JenisSuratService::delete($id);
             logActivity($user['id'], 'hapus_jenis_surat', "Menghapus jenis surat ID: {$id}");
             
-            setFlash('success', 'Jenis surat berhasil dihapus');
-            redirect(BASE_URL . '/jenis_surat.php?success=deleted');
+            echo json_encode(['status' => 'success', 'message' => 'Jenis surat berhasil dihapus']);
             break;
             
         default:
@@ -67,7 +71,6 @@ try {
     }
     
 } catch (Exception $e) {
-    setFlash('error', $e->getMessage());
-    redirect(BASE_URL . '/jenis_surat.php?error=process_failed');
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
 ?>

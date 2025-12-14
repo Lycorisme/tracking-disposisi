@@ -1,7 +1,7 @@
 <?php
 // modules/disposisi/disposisi_handler.php
 
-// 1. PENTING: Mulai buffering di baris paling atas untuk menangkap output tak terduga (seperti notice/warning)
+// 1. Mulai buffering untuk menangkap output tak terduga (seperti notice/warning)
 ob_start();
 
 require_once __DIR__ . '/../../config/config.php';
@@ -14,13 +14,13 @@ require_once __DIR__ . '/../surat/surat_service.php';
 // Deteksi apakah request adalah AJAX
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
-// 2. Cek session. Jika habis dan ini AJAX, kirim JSON 401 agar JS bisa redirect.
+// 2. Cek session. Jika habis dan ini AJAX, kirim JSON 401.
 if (!isLoggedIn()) {
-    ob_end_clean(); // Hapus output HTML/error sebelumnya
-    http_response_code(401); // Unauthorized
+    ob_end_clean(); // Hapus output sebelumnya
+    http_response_code(401);
     header('Content-Type: application/json');
     echo json_encode([
-        'success' => false,
+        'status' => 'error',
         'message' => 'Sesi login Anda telah habis. Silakan refresh halaman.'
     ]);
     exit;
@@ -32,8 +32,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $user = getCurrentUser();
 
 /**
- * Fungsi Helper: Generate HTML Timeline
- * Digunakan untuk merender ulang tampilan timeline via AJAX tanpa refresh halaman
+ * Helper: Generate HTML Timeline untuk update real-time di halaman Detail Surat
  */
 function generateTimelineHtml($history) {
     if (empty($history)) {
@@ -45,13 +44,13 @@ function generateTimelineHtml($history) {
     }
 
     $html = '<div class="relative">';
-    $html .= '<div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>'; // Garis vertikal
+    $html .= '<div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>';
     $html .= '<div class="space-y-6">';
 
     foreach ($history as $disp) {
         // Tentukan styling berdasarkan status
-        $bgClass = 'bg-blue-100';
-        $iconClass = 'fa-paper-plane text-blue-600';
+        $bgClass = 'bg-primary-100'; // Default ikut tema
+        $iconClass = 'fa-paper-plane text-primary-600';
         
         if ($disp['status_disposisi'] === 'selesai') {
             $bgClass = 'bg-green-100'; $iconClass = 'fa-check text-green-600';
@@ -68,7 +67,7 @@ function generateTimelineHtml($history) {
         
         $catatanHtml = '';
         if ($disp['catatan']) {
-            $catatanHtml = '<div class="mt-2 p-2 bg-white rounded border-l-4 border-blue-500"><p class="text-sm text-gray-700">'.nl2br(sanitize($disp['catatan'])).'</p></div>';
+            $catatanHtml = '<div class="mt-2 p-2 bg-white rounded border-l-4 border-gray-300"><p class="text-sm text-gray-700">'.nl2br(sanitize($disp['catatan'])).'</p></div>';
         }
         
         $tglDisposisi = formatDateTime($disp['tanggal_disposisi']);
@@ -116,46 +115,9 @@ function generateTimelineHtml($history) {
     return $html;
 }
 
-/**
- * Helper: Build Redirect URL
- */
-function buildRedirectUrl($redirectPath, $params = []) {
-    $redirectPath = trim($redirectPath);
-    $parsedUrl = parse_url($redirectPath);
-    $path = $parsedUrl['path'] ?? $redirectPath;
-    
-    $existingParams = [];
-    if (isset($parsedUrl['query'])) {
-        parse_str($parsedUrl['query'], $existingParams);
-    }
-    
-    $allParams = array_merge($existingParams, $params);
-    
-    // Normalisasi path
-    if (strpos($redirectPath, BASE_URL) === 0) {
-        $finalPath = $redirectPath;
-    } elseif (strpos($path, '../../public/') === 0) {
-        $finalPath = $path;
-    } elseif (strpos($path, 'public/') === 0) {
-        $finalPath = '../../' . $path;
-    } elseif (strpos($path, '/public/') !== false) {
-        $publicPos = strpos($path, '/public/');
-        $relativePath = substr($path, $publicPos + 8);
-        $finalPath = '../../public/' . $relativePath;
-    } else {
-        $filename = basename($path);
-        $finalPath = '../../public/' . $filename;
-    }
-    
-    if (!empty($allParams)) {
-        $finalPath .= '?' . http_build_query($allParams);
-    }
-    
-    return $finalPath;
-}
-
 try {
     switch ($action) {
+        // --- KIRIM DISPOSISI ---
         case 'create':
             $suratId = (int)$_POST['id_surat'];
             $keUserId = (int)$_POST['ke_user_id'];
@@ -194,33 +156,22 @@ try {
             
             logActivity($user['id'], 'disposisi_surat', "Mendisposisi surat {$surat['nomor_agenda']} ke {$targetUser['nama_lengkap']}");
             
-            // --- JIKA REQUEST ADALAH AJAX ---
-            if ($isAjax) {
-                // Generate timeline terbaru
-                $newHistory = DisposisiService::getHistoryBySurat($suratId);
-                $html = generateTimelineHtml($newHistory);
-                
-                // 3. PENTING: Bersihkan buffer sebelum kirim JSON
-                ob_end_clean(); 
-                
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Disposisi berhasil dikirim',
-                    'html' => $html,
-                    'count' => count($newHistory)
-                ]);
-                exit;
-            }
-
-            // Fallback untuk request biasa (non-AJAX)
-            setFlash('success', 'Disposisi berhasil dikirim');
-            $redirectBase = $_POST['redirect_url'] ?? $_POST['redirect'] ?? "surat_detail.php?id={$suratId}";
-            $redirectUrl = buildRedirectUrl($redirectBase, ['success' => 'sent']);
-            header("Location: {$redirectUrl}");
-            exit;
-            break;
+            // Generate timeline terbaru untuk AJAX update
+            $newHistory = DisposisiService::getHistoryBySurat($suratId);
+            $html = generateTimelineHtml($newHistory);
             
+            // Bersihkan buffer & Kirim JSON
+            ob_end_clean(); 
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Disposisi berhasil dikirim',
+                'html' => $html,
+                'count' => count($newHistory)
+            ]);
+            exit;
+
+        // --- UPDATE STATUS DISPOSISI (INBOX) ---
         case 'update_status':
             $id = (int)$_POST['id'];
             $status = sanitize($_POST['status']);
@@ -254,46 +205,28 @@ try {
             
             logActivity($user['id'], 'update_disposisi', "Mengubah status disposisi ID {$id} menjadi {$status}");
             
-            // Jika AJAX
-            if ($isAjax) {
-                ob_end_clean();
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Status disposisi berhasil diperbarui'
-                ]);
-                exit;
-            }
-
-            setFlash('success', 'Status disposisi berhasil diperbarui');
-            $redirectBase = $_POST['redirect'] ?? 'disposisi_inbox.php';
-            $redirectUrl = buildRedirectUrl($redirectBase, ['success' => 'updated']);
-            header("Location: {$redirectUrl}");
+            // Bersihkan buffer & Kirim JSON
+            ob_end_clean();
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Status disposisi berhasil diperbarui'
+            ]);
             exit;
-            break;
             
         default:
             throw new Exception('Action tidak valid');
     }
     
-} catch (Exception $e) { // Bisa diganti Throwable untuk PHP 7+ jika ingin menangkap fatal error
-    if ($isAjax) {
-        // 4. PENTING: Bersihkan buffer agar pesan error HTML tidak tercampur JSON
-        ob_end_clean();
-        
-        http_response_code(400); // Bad Request
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
-        exit;
-    }
-
-    setFlash('error', $e->getMessage());
-    $redirectBase = $_POST['redirect'] ?? $_GET['redirect'] ?? 'disposisi_inbox.php';
-    $redirectUrl = buildRedirectUrl($redirectBase, ['error' => 'process_failed']);
-    header("Location: {$redirectUrl}");
+} catch (Exception $e) {
+    ob_end_clean(); // Bersihkan buffer agar pesan error HTML tidak tercampur JSON
+    
+    http_response_code(400); // Bad Request
+    header('Content-Type: application/json');
+    echo json_encode([
+        'status' => 'error',
+        'message' => $e->getMessage()
+    ]);
     exit;
 }
 ?>

@@ -213,7 +213,7 @@ $jenisSuratList = JenisSuratService::getAll();
                 <h3 id="modalTitle" class="text-base sm:text-lg font-semibold text-gray-800">Tambah Surat</h3>
             </div>
             
-            <form id="suratForm" method="POST" enctype="multipart/form-data">
+            <form id="suratForm" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="formAction" value="create">
                 <input type="hidden" name="id" id="suratId">
                 
@@ -230,10 +230,10 @@ $jenisSuratList = JenisSuratService::getAll();
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Surat *</label>
-                            <input type="text" name="nomor_surat" id="nomor_surat" required 
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Surat</label>
+                            <input type="text" name="nomor_surat" id="nomor_surat" 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-                                   placeholder="Contoh: 123/PEM/XI/2025">
+                                   placeholder="Kosongkan untuk generate otomatis">
                         </div>
                         
                         <div>
@@ -291,11 +291,11 @@ $jenisSuratList = JenisSuratService::getAll();
                 
                 <div class="px-4 sm:px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-2">
                     <button type="button" onclick="closeModal()" 
-                            class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                         Batal
                     </button>
-                    <button type="submit" 
-                            class="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg">
+                    <button type="submit" id="btnSave"
+                            class="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
                         <i class="fas fa-save mr-2"></i>Simpan
                     </button>
                 </div>
@@ -304,8 +304,9 @@ $jenisSuratList = JenisSuratService::getAll();
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-const handlerPath = '<?= dirname($_SERVER['PHP_SELF']) ?>/../modules/surat/surat_handler.php';
+const handlerUrl = '../modules/surat/surat_handler.php';
 
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Tambah Surat';
@@ -315,7 +316,6 @@ function openAddModal() {
     document.getElementById('currentFile').textContent = '-';
     document.getElementById('tanggal_surat').value = '<?= date('Y-m-d') ?>';
     document.getElementById('suratModal').classList.remove('hidden');
-    document.getElementById('suratForm').action = handlerPath;
     document.body.style.overflow = 'hidden';
 }
 
@@ -333,7 +333,6 @@ function openEditModal(surat) {
     document.getElementById('perihal').value = surat.perihal;
     document.getElementById('currentFile').textContent = surat.lampiran_file || '-';
     document.getElementById('suratModal').classList.remove('hidden');
-    document.getElementById('suratForm').action = handlerPath;
     document.body.style.overflow = 'hidden';
 }
 
@@ -342,79 +341,106 @@ function closeModal() {
     document.body.style.overflow = '';
 }
 
-function arsipkanSurat(id) {
-    confirmAction('Arsipkan surat ini?', function() {
-        submitAction('arsipkan', id);
+function deleteSurat(id) {
+    Swal.fire({
+        title: 'Hapus Surat?',
+        text: 'Data yang dihapus tidak bisa dikembalikan!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Hapus'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post(handlerUrl, { action: 'delete', id: id }, function(response) {
+                if(response.status === 'success') {
+                    Swal.fire('Terhapus!', response.message, 'success')
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            }, 'json').fail(function() {
+                Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
+            });
+        }
     });
 }
 
-function deleteSurat(id) {
-    confirmDelete(function() {
-        submitAction('delete', id);
-    }, 'Surat ini');
+function arsipkanSurat(id) {
+    Swal.fire({
+        title: 'Arsipkan Surat?',
+        text: 'Surat ini akan dipindahkan ke arsip.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Arsipkan'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post(handlerUrl, { action: 'arsipkan', id: id }, function(response) {
+                if(response.status === 'success') {
+                    Swal.fire('Berhasil!', response.message, 'success')
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            }, 'json');
+        }
+    });
 }
 
-function submitAction(action, id) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = handlerPath;
+// Handle Form Submit via AJAX
+$('#suratForm').on('submit', function(e) {
+    e.preventDefault();
     
-    const actionInput = document.createElement('input');
-    actionInput.type = 'hidden';
-    actionInput.name = 'action';
-    actionInput.value = action;
+    // Validasi Sederhana
+    const jenisId = $('#id_jenis').val();
+    // Nomor surat tidak dicek di sini karena optional (backend yang generate)
     
-    const idInput = document.createElement('input');
-    idInput.type = 'hidden';
-    idInput.name = 'id';
-    idInput.value = id;
-    
-    form.appendChild(actionInput);
-    form.appendChild(idInput);
-    document.body.appendChild(form);
-    form.submit();
-}
+    if (!jenisId) {
+        Swal.fire('Validasi', 'Mohon pilih jenis surat', 'warning');
+        return;
+    }
 
-document.getElementById('suratForm').addEventListener('submit', function(e) {
-    const jenisId = document.getElementById('id_jenis').value;
-    const nomorSurat = document.getElementById('nomor_surat').value.trim();
-    const tanggalSurat = document.getElementById('tanggal_surat').value;
-    const alamatSurat = document.getElementById('alamat_surat').value.trim();
-    const perihal = document.getElementById('perihal').value.trim();
+    const formData = new FormData(this);
+    const btn = $('#btnSave');
+    const originalText = btn.html();
     
-    if (!jenisId || !nomorSurat || !tanggalSurat || !alamatSurat || !perihal) {
-        e.preventDefault();
-        showError('Mohon lengkapi semua field yang wajib diisi');
-        return false;
-    }
-    
-    const fileInput = document.getElementById('lampiran_file');
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-        const maxSize = 5 * 1024 * 1024;
-        
-        if (!allowedTypes.includes(file.type)) {
-            e.preventDefault();
-            showError('Format file harus PDF, JPG, atau PNG');
-            return false;
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...');
+
+    $.ajax({
+        url: handlerUrl,
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        dataType: 'json',
+        success: function(response) {
+            btn.prop('disabled', false).html(originalText);
+            
+            if (response.status === 'success') {
+                closeModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: response.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire('Gagal', response.message, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            btn.prop('disabled', false).html(originalText);
+            console.error(xhr.responseText);
+            Swal.fire('Error', 'Terjadi kesalahan sistem. Cek console log.', 'error');
         }
-        
-        if (file.size > maxSize) {
-            e.preventDefault();
-            showError('Ukuran file maksimal 5MB');
-            return false;
-        }
-    }
-    
-    showLoading('Menyimpan data...');
-    return true;
+    });
 });
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeModal();
-    }
+    if (e.key === 'Escape') closeModal();
 });
 
 document.getElementById('suratModal').addEventListener('click', function(e) {

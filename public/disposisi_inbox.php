@@ -18,7 +18,6 @@ $filters = [
     'search' => $_GET['search'] ?? ''
 ];
 
-// Pagination Logic
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
@@ -45,9 +44,9 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                 <form method="GET" class="space-y-3 sm:space-y-0 sm:flex sm:gap-2">
                     <input type="text" name="search" value="<?= htmlspecialchars($filters['search']) ?>"
                            placeholder="Cari nomor surat, perihal..." 
-                           class="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                           class="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500">
                     
-                    <select name="status" class="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <select name="status" class="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500">
                         <option value="">Semua Status</option>
                         <option value="dikirim" <?= $filters['status_disposisi'] == 'dikirim' ? 'selected' : '' ?>>Dikirim</option>
                         <option value="diterima" <?= $filters['status_disposisi'] == 'diterima' ? 'selected' : '' ?>>Diterima</option>
@@ -116,16 +115,12 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                                         <div class="flex space-x-2">
-                                            <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
-                                               class="text-primary-600 hover:text-primary-800 transition-colors" 
-                                               title="Lihat Detail">
+                                            <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" class="text-primary-600 hover:text-primary-800 transition-colors" title="Lihat Detail">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             
-                                            <?php if ($disp['status_disposisi'] === 'dikirim' || $disp['status_disposisi'] === 'diterima' || $disp['status_disposisi'] === 'diproses'): ?>
-                                            <button onclick='openUpdateModal(<?= json_encode($disp) ?>)' 
-                                                    class="text-green-600 hover:text-green-800 transition-colors" 
-                                                    title="Update Status">
+                                            <?php if (in_array($disp['status_disposisi'], ['dikirim', 'diterima', 'diproses'])): ?>
+                                            <button onclick='openUpdateModal(<?= json_encode($disp) ?>)' class="text-green-600 hover:text-green-800 transition-colors" title="Update Status">
                                                 <i class="fas fa-check-circle"></i>
                                             </button>
                                             <?php endif; ?>
@@ -182,14 +177,12 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                             </div>
                             
                             <div class="flex gap-2">
-                                <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
-                                   class="flex-1 bg-primary-50 text-primary-600 hover:bg-primary-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" class="flex-1 bg-primary-50 text-primary-600 hover:bg-primary-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
                                     <i class="fas fa-eye mr-1"></i>Lihat
                                 </a>
                                 
-                                <?php if ($disp['status_disposisi'] === 'dikirim' || $disp['status_disposisi'] === 'diterima' || $disp['status_disposisi'] === 'diproses'): ?>
-                                <button onclick='openUpdateModal(<?= json_encode($disp) ?>)' 
-                                        class="flex-1 bg-green-50 text-green-600 hover:bg-green-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                <?php if (in_array($disp['status_disposisi'], ['dikirim', 'diterima', 'diproses'])): ?>
+                                <button onclick='openUpdateModal(<?= json_encode($disp) ?>)' class="flex-1 bg-green-50 text-green-600 hover:bg-green-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
                                     <i class="fas fa-check-circle mr-1"></i>Update
                                 </button>
                                 <?php endif; ?>
@@ -218,10 +211,9 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                 <h3 class="text-base sm:text-lg font-semibold text-gray-800">Update Status Disposisi</h3>
             </div>
             
-            <form id="updateDisposisiForm" method="POST">
+            <form id="updateDisposisiForm">
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="id" id="disposisiId">
-                <input type="hidden" name="redirect" value="disposisi_inbox.php">
                 
                 <div class="px-4 sm:px-6 py-4 space-y-4">
                     <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
@@ -233,7 +225,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
-                        <select name="status" id="statusSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <select name="status" id="statusSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
                             <option value="diterima">Diterima</option>
                             <option value="diproses">Diproses</option>
                             <option value="selesai">Selesai</option>
@@ -243,19 +235,15 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Tambahan</label>
-                        <textarea name="catatan" rows="3" 
-                                  placeholder="Tambahkan catatan untuk update status ini..."
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                        <textarea name="catatan" rows="3" placeholder="Tambahkan catatan untuk update status ini..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"></textarea>
                     </div>
                 </div>
                 
                 <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-2">
-                    <button type="button" onclick="closeUpdateModal()" 
-                            class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    <button type="button" onclick="closeUpdateModal()" class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                         Batal
                     </button>
-                    <button type="submit" 
-                            class="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+                    <button type="submit" id="btnUpdate" class="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
                         Update Status
                     </button>
                 </div>
@@ -265,6 +253,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
 </div>
 
 <script>
+// Path ke Handler
 const disposisiHandlerPath = '../modules/disposisi/disposisi_handler.php';
 
 function openUpdateModal(disposisi) {
@@ -281,7 +270,6 @@ function openUpdateModal(disposisi) {
         statusSelect.value = 'selesai';
     }
     
-    document.getElementById('updateDisposisiForm').action = disposisiHandlerPath;
     document.getElementById('updateModal').classList.remove('hidden');
 }
 
@@ -289,10 +277,49 @@ function closeUpdateModal() {
     document.getElementById('updateModal').classList.add('hidden');
 }
 
+// Handle AJAX Submit
+$('#updateDisposisiForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    const btn = $('#btnUpdate');
+    const originalText = btn.html();
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Loading...');
+
+    $.ajax({
+        url: disposisiHandlerPath,
+        type: 'POST',
+        data: $(this).serialize(),
+        dataType: 'json',
+        success: function(response) {
+            btn.prop('disabled', false).html(originalText);
+            
+            if (response.status === 'success') {
+                closeUpdateModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: response.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire('Gagal', response.message, 'error');
+            }
+        },
+        error: function(xhr) {
+            btn.prop('disabled', false).html(originalText);
+            let msg = 'Terjadi kesalahan sistem';
+            try {
+                const res = JSON.parse(xhr.responseText);
+                if(res.message) msg = res.message;
+            } catch(e) {}
+            Swal.fire('Error', msg, 'error');
+        }
+    });
+});
+
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeUpdateModal();
-    }
+    if (e.key === 'Escape') closeUpdateModal();
 });
 
 document.getElementById('updateModal').addEventListener('click', function(e) {
