@@ -4,17 +4,34 @@ require_once __DIR__ . '/../../config/database.php';
 
 class SuratService {
     
-    // Ambil semua surat
-    public static function getAll($filters = [], $limit = 10, $offset = 0) {
+    /**
+     * Get all surat dengan filter stakeholder
+     * Admin (role 1): Semua surat
+     * Karyawan/Magang (role 2,3): Hanya surat yang ditangani
+     */
+    public static function getAll($filters = [], $limit = 10, $offset = 0, $userId = null, $userRole = null) {
         $conn = getConnection();
         $sql = "SELECT s.*, j.nama_jenis, u.nama_lengkap as dibuat_oleh_nama 
                 FROM surat s 
                 LEFT JOIN jenis_surat j ON s.id_jenis = j.id 
-                LEFT JOIN users u ON s.dibuat_oleh = u.id 
-                WHERE 1=1";
+                LEFT JOIN users u ON s.dibuat_oleh = u.id";
+        
+        // Filter by stakeholder jika bukan admin
+        if ($userId && $userRole != 1) {
+            $sql .= " INNER JOIN surat_stakeholders ss ON s.id = ss.surat_id 
+                      WHERE ss.user_id = ? AND ss.is_active = 1";
+        } else {
+            $sql .= " WHERE 1=1";
+        }
         
         $params = [];
         $types = "";
+        
+        // Add userId as first param if filtering by stakeholder
+        if ($userId && $userRole != 1) {
+            $params[] = $userId;
+            $types .= "i";
+        }
 
         if (!empty($filters['search'])) {
             $search = "%" . $filters['search'] . "%";
@@ -55,13 +72,28 @@ class SuratService {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    // Hitung total surat
-    public static function count($filters = []) {
+    /**
+     * Count surat dengan filter stakeholder
+     */
+    public static function count($filters = [], $userId = null, $userRole = null) {
         $conn = getConnection();
-        $sql = "SELECT COUNT(*) as total FROM surat s WHERE 1=1";
+        $sql = "SELECT COUNT(DISTINCT s.id) as total FROM surat s";
+        
+        // Filter by stakeholder jika bukan admin
+        if ($userId && $userRole != 1) {
+            $sql .= " INNER JOIN surat_stakeholders ss ON s.id = ss.surat_id 
+                      WHERE ss.user_id = ? AND ss.is_active = 1";
+        } else {
+            $sql .= " WHERE 1=1";
+        }
         
         $params = [];
         $types = "";
+        
+        if ($userId && $userRole != 1) {
+            $params[] = $userId;
+            $types .= "i";
+        }
 
         if (!empty($filters['search'])) {
             $search = "%" . $filters['search'] . "%";
@@ -93,7 +125,6 @@ class SuratService {
         return $stmt->get_result()->fetch_assoc()['total'];
     }
 
-    // Ambil by ID
     public static function getById($id) {
         $conn = getConnection();
         $sql = "SELECT s.*, j.nama_jenis, u.nama_lengkap as dibuat_oleh_nama 
@@ -107,12 +138,10 @@ class SuratService {
         return $stmt->get_result()->fetch_assoc();
     }
 
-    // --- FUNGSI BARU: Generate Nomor Surat Otomatis ---
     public static function generateNomorSurat() {
         $conn = getConnection();
         $year = date('Y');
         
-        // Format: [001]/SRT/[2025]
         $sql = "SELECT nomor_surat FROM surat WHERE nomor_surat LIKE '%/SRT/$year' ORDER BY id DESC LIMIT 1";
         $result = $conn->query($sql);
         
@@ -128,18 +157,15 @@ class SuratService {
         return sprintf("%03d/SRT/%s", $nextNum, $year);
     }
 
-    // Buat Surat Baru (dengan stakeholder tracking)
     public static function create($data) {
         $conn = getConnection();
         
-        // 1. Generate Nomor Agenda
         $today = date('Ymd');
         $checkSql = "SELECT COUNT(*) as total FROM surat WHERE DATE(created_at) = CURDATE()";
         $checkResult = $conn->query($checkSql)->fetch_assoc();
         $count = $checkResult['total'] + 1;
         $nomorAgenda = 'AGD-' . $today . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
-        // 2. Generate Nomor Surat jika kosong
         $nomorSurat = $data['nomor_surat'];
         if (empty($nomorSurat)) {
             $nomorSurat = self::generateNomorSurat();
@@ -168,8 +194,8 @@ class SuratService {
         if ($result) {
             $suratId = $conn->insert_id;
             
-            // Add creator as stakeholder (pembuat)
-            self::addStakeholder($suratId, $data['dibuat_oleh'], 'pembuat');
+            // FIX: role_type harus 'creator' bukan 'pembuat'
+            self::addStakeholder($suratId, $data['dibuat_oleh'], 'creator');
             
             return true;
         }
@@ -178,10 +204,9 @@ class SuratService {
     }
     
     /**
-     * Add stakeholder untuk surat
+     * FIX: role_type enum: 'creator', 'recipient', 'processor'
      */
     public static function addStakeholder($suratId, $userId, $roleType, $assignedBy = null) {
-        // Check if already exists
         $existing = dbSelectOne(
             "SELECT id FROM surat_stakeholders WHERE surat_id = ? AND user_id = ?",
             [$suratId, $userId],
@@ -189,7 +214,7 @@ class SuratService {
         );
         
         if ($existing) {
-            return true; // Already a stakeholder
+            return true;
         }
         
         $query = "INSERT INTO surat_stakeholders (surat_id, user_id, role_type, assigned_by, assigned_at, is_active) 
@@ -198,7 +223,6 @@ class SuratService {
         return dbExecute($query, [$suratId, $userId, $roleType, $assignedBy], 'iisi');
     }
 
-    // Update Surat
     public static function update($id, $data) {
         $conn = getConnection();
         $sql = "UPDATE surat SET id_jenis=?, nomor_surat=?, tanggal_surat=?, tanggal_diterima=?, dari_instansi=?, ke_instansi=?, alamat_surat=?, perihal=?, lampiran_file=? WHERE id=?";
@@ -220,7 +244,6 @@ class SuratService {
         return $stmt->execute();
     }
 
-    // Hapus Surat
     public static function delete($id) {
         $conn = getConnection();
         $stmt = $conn->prepare("DELETE FROM surat WHERE id = ?");
@@ -228,7 +251,6 @@ class SuratService {
         return $stmt->execute();
     }
 
-    // ========== Arsipkan Surat (dengan clear notifications) ==========
     public static function arsipkan($id) {
         $conn = getConnection();
         $stmt = $conn->prepare("UPDATE surat SET status_surat = 'arsip' WHERE id = ?");
@@ -236,7 +258,6 @@ class SuratService {
         $result = $stmt->execute();
         
         if ($result) {
-            // Clear notifications dan deactivate stakeholders
             if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
                 require_once __DIR__ . '/../notifications/notification_service.php';
                 NotificationService::clearBySurat($id);
@@ -308,21 +329,33 @@ class SuratService {
         return ['success' => false, 'message' => 'Gagal mengupload file ke server'];
     }
 
-    // ========== Update status surat (dengan auto-clear notifications) ==========
     public static function updateStatus($id, $status) {
         $conn = getConnection();
         $stmt = $conn->prepare("UPDATE surat SET status_surat = ? WHERE id = ?");
         $stmt->bind_param("si", $status, $id);
         $result = $stmt->execute();
         
-        // LOGIC BARU: Auto-clear notifications jika status jadi final (disetujui, ditolak, arsip)
         if ($result && in_array($status, ['disetujui', 'ditolak', 'arsip'])) {
-            // Clear notifications dan deactivate stakeholders
             if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
                 require_once __DIR__ . '/../notifications/notification_service.php';
                 NotificationService::clearBySurat($id);
                 NotificationService::deactivateStakeholders($id);
             }
+        }
+        
+        return $result;
+    }
+    
+    public static function reopenSurat($id) {
+        $conn = getConnection();
+        
+        $stmt = $conn->prepare("UPDATE surat SET status_surat = 'proses' WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $result = $stmt->execute();
+        
+        if ($result) {
+            $query = "UPDATE surat_stakeholders SET is_active = 1 WHERE surat_id = ?";
+            dbExecute($query, [$id], 'i');
         }
         
         return $result;

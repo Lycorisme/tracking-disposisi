@@ -146,6 +146,35 @@ try {
                 throw new Exception("Gagal mengubah status surat");
             }
             break;
+            
+        // ========== ACTION BARU: REOPEN SURAT (ADMIN ONLY) ==========
+        case 'reopen':
+            // Hanya admin yang bisa reopen
+            if (!hasRole(['admin', 'superadmin'])) {
+                throw new Exception("Anda tidak memiliki akses untuk membuka kembali surat");
+            }
+            
+            $id = $_POST['id'] ?? 0;
+            if (!$id) throw new Exception("ID Surat tidak valid");
+            
+            $surat = SuratService::getById($id);
+            if (!$surat) throw new Exception("Surat tidak ditemukan");
+            
+            // Hanya bisa reopen surat yang sudah disetujui
+            if ($surat['status_surat'] !== 'disetujui') {
+                throw new Exception("Hanya surat yang sudah disetujui yang bisa dibuka kembali");
+            }
+            
+            if (SuratService::reopenSurat($id)) {
+                logActivity($user['id'], 'reopen_surat', "Membuka kembali surat ID: $id");
+                echo json_encode([
+                    'status' => 'success', 
+                    'message' => 'Surat berhasil dibuka kembali dan dapat didisposisi lagi'
+                ]);
+            } else {
+                throw new Exception("Gagal membuka kembali surat");
+            }
+            break;
 
         default:
             throw new Exception("Aksi tidak valid");

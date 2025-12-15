@@ -11,47 +11,29 @@ require_once __DIR__ . '/../modules/users/users_service.php';
 requireLogin();
 
 $user = getCurrentUser();
+$userId = $user['id'];
+$userRole = $user['id_role'] ?? 3; // Default ke role 3 jika tidak ada
 $suratId = (int)($_GET['id'] ?? 0);
 
 $surat = SuratService::getById($suratId);
 if (!$surat) {
-    header("Location: surat.php");
+    header("Location: surat.php?error=" . urlencode("Surat tidak ditemukan"));
     exit;
 }
 
+// ===== AUTO-ACCEPT DISPOSISI =====
+// Jika user membuka detail surat yang didisposisi ke dia, 
+// otomatis update status dari 'dikirim' ke 'diterima'
+DisposisiService::autoAcceptDisposisi($suratId, $userId);
+
+// Get disposisi history untuk surat ini
 $disposisiHistory = DisposisiService::getHistoryBySurat($suratId);
 
-// Ambil user aktif selain diri sendiri
+// Ambil user aktif selain diri sendiri (untuk modal disposisi)
 $availableUsers = UsersService::getAll('active', $user['id']); 
 
-// ========== LOGIC BARU: Cek apakah user boleh disposisi ==========
-$userRole = $user['id_role'] ?? 3;
-$isAdmin = in_array($userRole, [1, 2]); // 1=superadmin, 2=karyawan
-
-// Status surat yang dianggap "selesai" dan tidak boleh didisposisi lagi
-$finishedStatuses = ['disetujui', 'ditolak', 'arsip'];
-$suratIsFinished = in_array($surat['status_surat'], $finishedStatuses);
-
-// RULE: 
-// - Admin/Superadmin: SELALU bisa disposisi (meskipun surat selesai)
-// - Karyawan/Magang: TIDAK bisa disposisi jika surat sudah selesai
-$canDisposeButton = true;
-$disableReason = '';
-
-if (!$isAdmin && $suratIsFinished) {
-    $canDisposeButton = false;
-    $disableReason = 'Surat ini sudah selesai. Hanya administrator yang dapat mendisposisi surat yang sudah selesai.';
-}
-
-// Cek apakah user adalah stakeholder atau pembuat surat
-$isStakeholder = DisposisiService::canDispose($user['id'], $suratId) || $surat['dibuat_oleh'] == $user['id'];
-
-if (!$isStakeholder && !$isAdmin) {
-    $canDisposeButton = false;
-    if (empty($disableReason)) {
-        $disableReason = 'Anda tidak memiliki akses untuk mendisposisi surat ini.';
-    }
-}
+// Check apakah surat bisa didisposisi
+$canDisposeCheck = DisposisiService::checkSuratAvailability($suratId);
 
 $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
 ?>
@@ -64,6 +46,7 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
     <div class="flex-1 lg:ml-64 transition-all duration-300">
         <main class="p-4 sm:p-6 lg:p-8">
             
+            <!-- Breadcrumb & Header -->
             <div class="mb-8">
                 <nav class="flex mb-3" aria-label="Breadcrumb">
                     <ol class="inline-flex items-center space-x-1 md:space-x-3">
@@ -82,6 +65,7 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                     </div>
                     
                     <div class="flex items-center gap-3">
+                        <!-- Tombol Lihat File -->
                         <?php if ($surat['lampiran_file']): ?>
                         <a href="<?= UPLOAD_URL . $surat['lampiran_file'] ?>" target="_blank" 
                            class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 rounded-lg font-medium text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all">
@@ -89,37 +73,31 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                         </a>
                         <?php endif; ?>
                         
-                        <?php if ($canDisposeButton): ?>
-                        <button onclick="openDisposisiModal()" 
-                                class="inline-flex items-center px-4 py-2.5 bg-primary-600 border border-transparent rounded-lg font-medium text-sm text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all transform active:scale-95">
-                            <i class="fas fa-paper-plane mr-2"></i> Disposisi
-                        </button>
-                        <?php else: ?>
-                        <!-- Button Disabled dengan Tooltip -->
-                        <div class="relative group">
-                            <button disabled
-                                    class="inline-flex items-center px-4 py-2.5 bg-gray-300 border border-transparent rounded-lg font-medium text-sm text-gray-500 shadow-sm cursor-not-allowed opacity-60">
-                                <i class="fas fa-ban mr-2"></i> Disposisi
+                        <!-- Tombol Disposisi - HIDE untuk Anak Magang (role 3) -->
+                        <?php if ($userRole != 3): ?>
+                            <?php if ($canDisposeCheck['can_dispose']): ?>
+                            <button onclick="openDisposisiModal()" 
+                                    class="inline-flex items-center px-4 py-2.5 bg-primary-600 border border-transparent rounded-lg font-medium text-sm text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all transform active:scale-95">
+                                <i class="fas fa-paper-plane mr-2"></i> Disposisi
                             </button>
-                            <!-- Tooltip -->
-                            <div class="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 hidden group-hover:block w-64 z-10">
-                                <div class="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg">
-                                    <div class="flex items-start gap-2">
-                                        <i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i>
-                                        <span><?= htmlspecialchars($disableReason) ?></span>
-                                    </div>
-                                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
-                                </div>
-                            </div>
-                        </div>
+                            <?php else: ?>
+                            <button disabled 
+                                    title="<?= htmlspecialchars($canDisposeCheck['message']) ?>"
+                                    class="inline-flex items-center px-4 py-2.5 bg-gray-400 border border-transparent rounded-lg font-medium text-sm text-white shadow-sm cursor-not-allowed opacity-60">
+                                <i class="fas fa-check mr-2"></i> Sudah Didisposisi
+                            </button>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
             
+            <!-- Main Content Grid -->
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <!-- Left Column -->
                 <div class="xl:col-span-2 space-y-6">
                     
+                    <!-- Atribut Surat Card -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                             <h2 class="text-base font-semibold text-gray-800">
@@ -169,12 +147,13 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                         </div>
                     </div>
                     
+                    <!-- Riwayat Disposisi Card -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h2 class="text-base font-semibold text-gray-800">
                                 <i class="fas fa-history mr-2 text-primary-600"></i> Riwayat Disposisi
                             </h2>
-                            <span class="bg-primary-50 text-primary-700 text-xs px-2 py-1 rounded-md font-medium" id="stat-badge-disposisi">
+                            <span class="bg-primary-50 text-primary-700 text-xs px-2 py-1 rounded-md font-medium">
                                 <?= count($disposisiHistory) ?> Aktivitas
                             </span>
                         </div>
@@ -192,6 +171,14 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                                     <ul role="list" class="-mb-8">
                                         <?php foreach ($disposisiHistory as $index => $disp): 
                                             $isLast = $index === array_key_last($disposisiHistory);
+                                            
+                                            // Background color untuk row berdasarkan status
+                                            $rowBgClass = '';
+                                            if ($disp['status_disposisi'] === 'ditolak') {
+                                                $rowBgClass = 'bg-red-50 border-red-200';
+                                            } elseif ($disp['status_disposisi'] === 'selesai') {
+                                                $rowBgClass = 'bg-green-50 border-green-200';
+                                            }
                                             
                                             // Warna Icon berdasarkan Status
                                             $iconBg = 'bg-primary-500'; 
@@ -218,8 +205,8 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                                                             <i class="fas <?= $iconSymbol ?> text-white text-xs"></i>
                                                         </span>
                                                     </div>
-                                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                                        <div class="w-full">
+                                                    <div class="min-w-0 flex-1 pt-1.5">
+                                                        <div class="w-full p-3 rounded-lg border <?= $rowBgClass ? $rowBgClass : 'border-gray-100 bg-white' ?>">
                                                             <div class="flex justify-between items-start mb-1">
                                                                 <p class="text-sm text-gray-500">
                                                                     <span class="font-bold text-gray-900"><?= htmlspecialchars($disp['dari_user_nama']) ?></span>
@@ -241,7 +228,8 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                                                             </div>
 
                                                             <?php if ($disp['catatan']): ?>
-                                                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 text-sm text-gray-700 italic">
+                                                            <div class="bg-white rounded-lg p-3 border border-gray-200 text-sm text-gray-700 italic">
+                                                                <i class="fas fa-comment-dots mr-1 text-gray-400"></i>
                                                                 "<?= nl2br(htmlspecialchars($disp['catatan'])) ?>"
                                                             </div>
                                                             <?php endif; ?>
@@ -265,6 +253,7 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                     </div>
                 </div>
                 
+                <!-- Right Sidebar -->
                 <div class="space-y-6">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                         <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Ringkasan</h3>
@@ -289,21 +278,6 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
                             </div>
                         </div>
                     </div>
-                    
-                    <?php if (!$canDisposeButton): ?>
-                    <!-- Info Box: Alasan Tidak Bisa Disposisi -->
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                        <div class="flex items-start gap-3">
-                            <div class="flex-shrink-0">
-                                <i class="fas fa-exclamation-triangle text-yellow-600 text-lg"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-semibold text-yellow-800 mb-1">Disposisi Tidak Tersedia</h4>
-                                <p class="text-xs text-yellow-700 leading-relaxed"><?= htmlspecialchars($disableReason) ?></p>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </main>
@@ -312,7 +286,8 @@ $pageTitle = 'Detail Surat - ' . $surat['nomor_agenda'];
     </div>
 </div>
 
-<!-- Modal Disposisi -->
+<!-- Modal Disposisi - HIDE untuk Anak Magang -->
+<?php if ($userRole != 3): ?>
 <div id="disposisiModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 overflow-y-auto backdrop-blur-sm transition-all">
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 transform transition-all scale-100">
@@ -387,11 +362,11 @@ function closeDisposisiModal() {
     document.getElementById('disposisiForm').reset();
 }
 
-// ========== Handle Form Submit (AJAX) dengan Update Timeline ==========
+// Handle Form Submit (AJAX)
 $('#disposisiForm').on('submit', function(e) {
     e.preventDefault();
     
-    // Validasi Sederhana
+    // Validasi
     const keUserId = document.querySelector('[name="ke_user_id"]').value;
     if (!keUserId) {
         Swal.fire({ 
@@ -403,7 +378,7 @@ $('#disposisiForm').on('submit', function(e) {
         return false;
     }
     
-    // UI State Loading
+    // UI Loading State
     const btn = $('#btnSubmitDisposisi');
     const originalText = btn.html();
     btn.prop('disabled', true).addClass('opacity-75 cursor-not-allowed').html('<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...');
@@ -425,18 +400,7 @@ $('#disposisiForm').on('submit', function(e) {
                     timer: 1500, 
                     showConfirmButton: false 
                 }).then(() => {
-                    // Update Timeline jika server return HTML
-                    if (response.html) {
-                        $('#disposisi-timeline-container').html(response.html);
-                    } else {
-                        location.reload(); 
-                    }
-                    
-                    // Update Counter
-                    if (response.count !== undefined) {
-                        $('#stat-total').text(response.count);
-                        $('#stat-badge-disposisi').text(response.count + ' Aktivitas');
-                    }
+                    location.reload(); 
                 });
             } else {
                 Swal.fire({
@@ -474,5 +438,6 @@ document.getElementById('disposisiModal').addEventListener('click', function(e) 
     if (e.target === this) closeDisposisiModal();
 });
 </script>
+<?php endif; ?>
 
 <?php include 'partials/footer.php'; ?>

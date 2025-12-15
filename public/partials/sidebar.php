@@ -10,7 +10,7 @@ if (file_exists(__DIR__ . '/../../modules/users/users_service.php')) {
     require_once __DIR__ . '/../../modules/users/users_service.php';
 }
 
-// ========== PERUBAHAN: Load NotificationService untuk badge inbox ==========
+// Load NotificationService untuk badge inbox
 if (file_exists(__DIR__ . '/../../modules/notifications/notification_service.php')) {
     require_once __DIR__ . '/../../modules/notifications/notification_service.php';
 }
@@ -30,7 +30,7 @@ if (hasRole('superadmin') && class_exists('UsersService')) {
     $pendingCount = UsersService::countPending();
 }
 
-// ========== PERUBAHAN: Hitung badge inbox dari surat aktif ==========
+// Hitung badge inbox dari surat aktif
 $inboxBadge = 0;
 if (class_exists('NotificationService')) {
     $inboxBadge = NotificationService::countActiveNotifications($user['id']);
@@ -129,19 +129,15 @@ function isGroupActive($pages) {
                     Semua Surat
                 </a>
                 
-                <!-- ========== PERUBAHAN: Badge Inbox auto-update ========== -->
+                <!-- FIX: Badge Inbox - hidden jika count = 0 -->
                 <a href="<?= BASE_URL ?>/disposisi_inbox.php" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors <?= isActive('disposisi_inbox.php') ?>">
                     <div class="flex items-center">
                         <i class="fas fa-inbox w-6 text-center mr-2"></i>
                         Disposisi Masuk
                     </div>
-                    <?php if ($inboxBadge > 0): ?>
-                    <span id="inbox-badge" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                    <span id="inbox-badge" class="<?= $inboxBadge > 0 ? '' : 'hidden' ?> bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                         <?= $inboxBadge ?>
                     </span>
-                    <?php else: ?>
-                    <span id="inbox-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm"></span>
-                    <?php endif; ?>
                 </a>
                 
                 <!-- Disposisi Keluar - HIDE untuk Anak Magang (role 3) -->
@@ -173,13 +169,13 @@ function isGroupActive($pages) {
                     <button type="button" class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 focus:outline-none transition-colors" onclick="toggleMenu('laporan-menu')">
                         <div class="flex items-center">
                             <i class="fas fa-file-alt w-6 text-center mr-2"></i>
-                            <span>Pusat Laporan</span>
+                            Pusat Laporan
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" id="laporan-arrow"></i>
+                        <i id="laporan-arrow" class="fas fa-chevron-down text-xs transition-transform duration-300"></i>
                     </button>
-                    <div id="laporan-menu" class="<?= isGroupActive(['laporan_surat_masuk.php', 'laporan_surat_keluar.php', 'laporan_proposal.php', 'laporan_disposisi.php', 'laporan_aktivitas.php']) ?> pl-9 space-y-1 mt-1 border-l-2 border-gray-100 ml-3">
-                        <a href="<?= BASE_URL ?>/laporan/laporan_surat_masuk.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_surat_masuk.php') ?>">Surat Masuk</a>
-                        <a href="<?= BASE_URL ?>/laporan/laporan_surat_keluar.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_surat_keluar.php') ?>">Surat Keluar</a>
+                    <div id="laporan-menu" class="mt-1 ml-6 space-y-1 pl-3 border-l-2 border-gray-200 hidden">
+                        <a href="<?= BASE_URL ?>/laporan/laporan_masuk.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_masuk.php') ?>">Surat Masuk</a>
+                        <a href="<?= BASE_URL ?>/laporan/laporan_keluar.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_keluar.php') ?>">Surat Keluar</a>
                         <a href="<?= BASE_URL ?>/laporan/laporan_proposal.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_proposal.php') ?>">Proposal</a>
                         <a href="<?= BASE_URL ?>/laporan/laporan_disposisi.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_disposisi.php') ?>">Disposisi</a>
                         <?php if ($userRole == 1): // Superadmin only ?>
@@ -210,6 +206,7 @@ function isGroupActive($pages) {
 
                 <!-- User Management & Settings - Only Superadmin (role 1) -->
                 <?php if ($userRole == 1): ?>
+                <!-- FIX: Hide pending badge if count = 0 -->
                 <a href="<?= BASE_URL ?>/users.php" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors <?= isActive('users.php') ?>">
                     <div class="flex items-center">
                         <i class="fas fa-users-cog w-6 text-center mr-2"></i>
@@ -306,7 +303,7 @@ function confirmLogout() {
     });
 }
 
-// ========== AUTO-UPDATE BADGE INBOX ==========
+// FIX: Auto-update badge inbox dengan proper hide/show
 function updateInboxBadge() {
     fetch('<?= BASE_URL ?>/../modules/notifications/notification_handler.php?action=count_active')
         .then(res => res.json())
@@ -328,10 +325,10 @@ function updateInboxBadge() {
         });
 }
 
-// Update badge setiap 30 detik (sinkron dengan notification bell)
+// Update badge setiap 30 detik
 setInterval(updateInboxBadge, 30000);
 
-console.log('✅ Sidebar inbox badge auto-update enabled (30s interval)');
+console.log('✅ Sidebar with fixed badge display initialized');
 </script>
 
 <style>

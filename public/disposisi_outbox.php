@@ -10,7 +10,6 @@ require_once __DIR__ . '/../modules/disposisi/disposisi_service.php';
 requireLogin();
 
 $user = getCurrentUser();
-$userRole = $user['id_role'] ?? 3;
 $pageTitle = 'Disposisi Keluar';
 
 $filters = [
@@ -23,12 +22,10 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
 
-// ========== PERUBAHAN: Gunakan getOutboxByRole ==========
-// Admin melihat semua, karyawan hanya melihat surat yang ia tangani
-$totalDisposisi = DisposisiService::countOutboxByRole($user['id'], $userRole, $filters);
+$totalDisposisi = DisposisiService::count($filters);
 $pagination = new Pagination($totalDisposisi, $perPage, $page);
 
-$disposisiList = DisposisiService::getOutboxByRole($user['id'], $userRole, $filters, $perPage, $offset);
+$disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
 ?>
 
 <?php include 'partials/header.php'; ?>
@@ -40,7 +37,7 @@ $disposisiList = DisposisiService::getOutboxByRole($user['id'], $userRole, $filt
         <main class="p-4 sm:p-6 lg:p-8">
             <div class="mb-4 sm:mb-6">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Disposisi Keluar</h1>
-                <p class="text-sm sm:text-base text-gray-600">Surat yang sedang beredar dan Anda kirimkan</p>
+                <p class="text-sm sm:text-base text-gray-600">Daftar disposisi yang Anda kirimkan</p>
             </div>
             
             <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
@@ -122,25 +119,11 @@ $disposisiList = DisposisiService::getOutboxByRole($user['id'], $userRole, $filt
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <div class="flex gap-2">
-                                            <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
-                                               class="text-primary-600 hover:text-primary-800 transition-colors" 
-                                               title="Lihat Surat">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            
-                                            <?php 
-                                            // Tampilkan button peringatan jika surat belum selesai
-                                            if (!in_array($disp['status_disposisi'], ['selesai', 'ditolak'])): 
-                                            ?>
-                                            <button onclick="kirimPeringatan(<?= $disp['id'] ?>, <?= $disp['ke_user_id'] ?>, '<?= htmlspecialchars($disp['ke_user_nama'], ENT_QUOTES) ?>')" 
-                                                    class="text-orange-600 hover:text-orange-800 transition-colors btn-peringatan" 
-                                                    data-disposisi-id="<?= $disp['id'] ?>"
-                                                    title="Kirim Peringatan">
-                                                <i class="fas fa-bell"></i>
-                                            </button>
-                                            <?php endif; ?>
-                                        </div>
+                                        <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
+                                           class="text-primary-600 hover:text-primary-800 transition-colors" 
+                                           title="Lihat Surat">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -200,20 +183,10 @@ $disposisiList = DisposisiService::getOutboxByRole($user['id'], $userRole, $filt
                                 <?php endif; ?>
                             </div>
                             
-                            <div class="flex gap-2">
-                                <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
-                                   class="flex-1 bg-primary-50 text-primary-600 hover:bg-primary-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
-                                    <i class="fas fa-eye mr-1"></i>Lihat Surat
-                                </a>
-                                
-                                <?php if (!in_array($disp['status_disposisi'], ['selesai', 'ditolak'])): ?>
-                                <button onclick="kirimPeringatan(<?= $disp['id'] ?>, <?= $disp['ke_user_id'] ?>, '<?= htmlspecialchars($disp['ke_user_nama'], ENT_QUOTES) ?>')" 
-                                        class="flex-1 bg-orange-50 text-orange-600 hover:bg-orange-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors btn-peringatan"
-                                        data-disposisi-id="<?= $disp['id'] ?>">
-                                    <i class="fas fa-bell mr-1"></i>Peringatan
-                                </button>
-                                <?php endif; ?>
-                            </div>
+                            <a href="surat_detail.php?id=<?= $disp['id_surat'] ?>" 
+                               class="block bg-primary-50 text-primary-600 hover:bg-primary-100 text-center py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                <i class="fas fa-eye mr-1"></i>Lihat Surat
+                            </a>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -230,140 +203,5 @@ $disposisiList = DisposisiService::getOutboxByRole($user['id'], $userRole, $filt
         <?php include 'partials/footer.php'; ?>
     </div>
 </div>
-
-<script>
-// Tracking cooldown per disposisi (LocalStorage)
-const COOLDOWN_DURATION = 3600000; // 1 jam dalam milliseconds
-
-function canSendReminder(disposisiId) {
-    const key = `reminder_cooldown_${disposisiId}`;
-    const lastSent = localStorage.getItem(key);
-    
-    if (!lastSent) return true;
-    
-    const timeSince = Date.now() - parseInt(lastSent);
-    return timeSince >= COOLDOWN_DURATION;
-}
-
-function setReminderCooldown(disposisiId) {
-    const key = `reminder_cooldown_${disposisiId}`;
-    localStorage.setItem(key, Date.now().toString());
-}
-
-function getRemainingCooldown(disposisiId) {
-    const key = `reminder_cooldown_${disposisiId}`;
-    const lastSent = localStorage.getItem(key);
-    
-    if (!lastSent) return 0;
-    
-    const timeSince = Date.now() - parseInt(lastSent);
-    const remaining = COOLDOWN_DURATION - timeSince;
-    
-    return remaining > 0 ? remaining : 0;
-}
-
-function formatCooldownTime(ms) {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes} menit ${seconds} detik`;
-}
-
-function kirimPeringatan(disposisiId, userId, userName) {
-    // Cek cooldown
-    if (!canSendReminder(disposisiId)) {
-        const remaining = getRemainingCooldown(disposisiId);
-        Swal.fire({
-            icon: 'warning',
-            title: 'Mohon Tunggu',
-            html: `Peringatan sudah dikirim. Anda dapat mengirim lagi dalam:<br><strong>${formatCooldownTime(remaining)}</strong>`,
-            confirmButtonText: 'OK'
-        });
-        return;
-    }
-    
-    // Konfirmasi pengiriman
-    Swal.fire({
-        title: 'Kirim Peringatan?',
-        html: `Anda akan mengirim peringatan ke:<br><strong>${userName}</strong><br><br>Peringatan hanya dapat dikirim 1 kali per jam.`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Kirim',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#f97316',
-        cancelButtonColor: '#6b7280'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Kirim request
-            const formData = new FormData();
-            formData.append('action', 'send_reminder');
-            formData.append('disposisi_id', disposisiId);
-            formData.append('user_id', userId);
-            
-            Swal.fire({
-                title: 'Mengirim...',
-                html: 'Mohon tunggu sebentar',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            fetch('<?= BASE_URL ?>/../modules/disposisi/disposisi_handler.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Set cooldown
-                    setReminderCooldown(disposisiId);
-                    
-                    // Disable button
-                    const buttons = document.querySelectorAll(`.btn-peringatan[data-disposisi-id="${disposisiId}"]`);
-                    buttons.forEach(btn => {
-                        btn.disabled = true;
-                        btn.classList.add('opacity-50', 'cursor-not-allowed');
-                    });
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: data.message,
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: data.message
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Terjadi kesalahan sistem'
-                });
-            });
-        }
-    });
-}
-
-// Check cooldown on page load dan disable button jika masih cooldown
-document.addEventListener('DOMContentLoaded', () => {
-    const buttons = document.querySelectorAll('.btn-peringatan');
-    buttons.forEach(btn => {
-        const disposisiId = btn.getAttribute('data-disposisi-id');
-        if (!canSendReminder(disposisiId)) {
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-            btn.title = 'Peringatan sudah dikirim, tunggu 1 jam';
-        }
-    });
-});
-</script>
 
 <?php include 'partials/footer.php'; ?>

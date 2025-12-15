@@ -1,7 +1,7 @@
 <?php
 // modules/disposisi/disposisi_handler.php
 
-// 1. Mulai buffering untuk menangkap output tak terduga
+// 1. Mulai buffering untuk menangkap output tak terduga (seperti notice/warning)
 ob_start();
 
 require_once __DIR__ . '/../../config/config.php';
@@ -127,9 +127,8 @@ try {
             $surat = SuratService::getById($suratId);
             if (!$surat) throw new Exception('Surat tidak ditemukan');
             
-            // Validasi hak akses - cek apakah user adalah stakeholder atau pembuat surat
-            $canDispose = DisposisiService::canDispose($user['id'], $suratId) || $surat['dibuat_oleh'] == $user['id'];
-            if (!$canDispose) {
+            // Validasi hak akses
+            if (!DisposisiService::canDispose($user['id'], $suratId) && $surat['dibuat_oleh'] != $user['id']) {
                 throw new Exception('Anda tidak memiliki akses untuk mendisposisi surat ini');
             }
             
@@ -148,12 +147,7 @@ try {
                 'catatan' => $catatan
             ];
             
-            // Create disposisi (sudah termasuk stakeholder tracking & notifikasi)
-            $disposisiId = DisposisiService::create($data);
-            
-            if (!$disposisiId) {
-                throw new Exception('Gagal membuat disposisi');
-            }
+            DisposisiService::create($data);
             
             // Update status surat jika masih baru
             if ($surat['status_surat'] === 'baru') {
@@ -177,7 +171,7 @@ try {
             ]);
             exit;
 
-        // --- UPDATE STATUS DISPOSISI (INBOX) - TANPA REDIRECT ---
+        // --- UPDATE STATUS DISPOSISI (INBOX) ---
         case 'update_status':
             $id = (int)$_POST['id'];
             $status = sanitize($_POST['status']);
@@ -189,66 +183,34 @@ try {
             $disposisi = DisposisiService::getById($id);
             if (!$disposisi) throw new Exception('Disposisi tidak ditemukan');
             
-            // Update status (sudah termasuk notifikasi dan stakeholder management)
+            if ($disposisi['ke_user_id'] != $user['id']) {
+                throw new Exception('Anda tidak memiliki akses untuk mengubah disposisi ini');
+            }
+            
             DisposisiService::updateStatus($id, $status, $catatan);
+            
+            // Update status surat induk jika perlu
+            if ($status === 'selesai') {
+                $allDispositions = DisposisiService::getHistoryBySurat($disposisi['id_surat']);
+                $allCompleted = true;
+                foreach ($allDispositions as $disp) {
+                    if ($disp['status_disposisi'] !== 'selesai' && $disp['id'] != $id) {
+                        $allCompleted = false; break;
+                    }
+                }
+                if ($allCompleted) SuratService::updateStatus($disposisi['id_surat'], 'disetujui');
+            } elseif ($status === 'ditolak') {
+                SuratService::updateStatus($disposisi['id_surat'], 'ditolak');
+            }
             
             logActivity($user['id'], 'update_disposisi', "Mengubah status disposisi ID {$id} menjadi {$status}");
             
-            // Bersihkan buffer & Kirim JSON (TANPA REDIRECT)
+            // Bersihkan buffer & Kirim JSON
             ob_end_clean();
             header('Content-Type: application/json');
             echo json_encode([
                 'status' => 'success',
-                'message' => 'Status disposisi berhasil diperbarui',
-                'new_status' => $status
-            ]);
-            exit;
-        
-        // ========== ACTION BARU: SEND REMINDER ==========
-        case 'send_reminder':
-            $disposisiId = (int)$_POST['disposisi_id'];
-            $targetUserId = (int)$_POST['user_id'];
-            
-            // Validasi disposisi
-            $disposisi = DisposisiService::getById($disposisiId);
-            if (!$disposisi) throw new Exception('Disposisi tidak ditemukan');
-            
-            // Pastikan user adalah pengirim disposisi atau admin
-            $userRole = $user['id_role'] ?? 3;
-            $isAdmin = in_array($userRole, [1, 2]);
-            
-            if ($disposisi['dari_user_id'] != $user['id'] && !$isAdmin) {
-                throw new Exception('Anda tidak memiliki akses untuk mengirim peringatan ini');
-            }
-            
-            // Pastikan status disposisi belum selesai
-            if (in_array($disposisi['status_disposisi'], ['selesai', 'ditolak'])) {
-                throw new Exception('Tidak dapat mengirim peringatan untuk disposisi yang sudah selesai');
-            }
-            
-            // Send notification reminder
-            if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
-                require_once __DIR__ . '/../notifications/notification_service.php';
-                
-                // Buat notifikasi peringatan
-                NotificationService::create([
-                    'user_id' => $targetUserId,
-                    'type' => 'surat_reminder',
-                    'title' => '⚠️ Peringatan: Disposisi Menunggu Respon',
-                    'message' => "Surat {$disposisi['nomor_agenda']} menunggu tindakan Anda. Mohon segera diproses.",
-                    'surat_id' => $disposisi['id_surat'],
-                    'disposisi_id' => $disposisiId,
-                    'url' => '/surat_detail.php?id=' . $disposisi['id_surat']
-                ]);
-            }
-            
-            logActivity($user['id'], 'send_reminder', "Mengirim peringatan disposisi ID {$disposisiId}");
-            
-            ob_end_clean();
-            header('Content-Type: application/json');
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'Peringatan berhasil dikirim ke ' . $disposisi['ke_user_nama']
+                'message' => 'Status disposisi berhasil diperbarui'
             ]);
             exit;
             
@@ -267,3 +229,4 @@ try {
     ]);
     exit;
 }
+?>
