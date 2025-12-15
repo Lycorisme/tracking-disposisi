@@ -4,7 +4,6 @@ if (!defined('APP_NAME')) {
     require_once __DIR__ . '/../../config/config.php';
 }
 
-// Pastikan kita punya akses ke data user untuk menampilkannya di pojok kanan
 if (!function_exists('getCurrentUser')) {
     require_once __DIR__ . '/../../includes/auth.php'; 
 }
@@ -13,11 +12,10 @@ $appName = function_exists('getSetting') ? getSetting('app_name', APP_NAME) : AP
 $appFavicon = function_exists('getSetting') ? getSetting('app_favicon') : null;
 $appLogo = function_exists('getSetting') ? getSetting('app_logo') : null;
 
-// --- LOGIKA WARNA TEMA DINAMIS ---
-// Ambil warna dari database, default ke 'blue' jika belum di-set
+// Warna tema dinamis
 $themeColorName = function_exists('getSetting') ? getSetting('theme_color', 'blue') : 'blue';
 
-// Ambil data user yang sedang login
+// Get current user
 $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
 ?>
 <!DOCTYPE html>
@@ -38,8 +36,6 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
             theme: {
                 extend: {
                     colors: {
-                        // Alias 'primary' ke warna pilihan dari database
-                        // Tailwind akan otomatis membuat primary-50, primary-100, dst.
                         primary: tailwind.colors.<?= $themeColorName ?> 
                     }
                 }
@@ -53,22 +49,43 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
     
     <style>
         [x-cloak] { display: none !important; }
-        /* Gunakan class 'primary' yang sudah dikonfig di atas */
         .sidebar-active { 
             @apply bg-primary-50 border-r-4 border-primary-600 text-primary-600; 
         }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-2 { 
+            display: -webkit-box; 
+            -webkit-line-clamp: 2; 
+            -webkit-box-orient: vertical; 
+            overflow: hidden; 
+        }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
         @media (max-width: 1023px) { .table-responsive { display: none; } }
+        
+        /* Animation untuk notification badge */
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
 
     <header class="fixed top-0 left-0 right-0 h-16 bg-white shadow-sm z-50 border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
         
+        <!-- Left: Mobile Menu + Logo -->
         <div class="flex items-center gap-4">
             <button id="mobile-menu-button" class="lg:hidden text-gray-600 hover:text-gray-900 focus:outline-none p-1.5 rounded-md hover:bg-gray-100 transition-colors">
                 <i class="fas fa-bars text-xl"></i>
@@ -84,8 +101,19 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
             </div>
         </div>
 
-        <div class="flex items-center">
+        <!-- Right: Notification Bell + User Menu -->
+        <div class="flex items-center gap-3">
             <?php if ($currentUser): ?>
+            
+            <!-- NOTIFICATION BELL -->
+            <?php 
+            // Include notification bell component
+            if (file_exists(__DIR__ . '/notification_bell.php')) {
+                include __DIR__ . '/notification_bell.php';
+            }
+            ?>
+            
+            <!-- USER MENU -->
             <div class="relative ml-3">
                 <button type="button" onclick="toggleUserDropdown()" class="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" id="user-menu-button">
                     <span class="sr-only">Open user menu</span>
@@ -103,14 +131,19 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
                 <div id="user-dropdown-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50" role="menu">
                     <div class="px-4 py-2 border-b border-gray-100 md:hidden">
                         <p class="text-sm font-medium text-gray-900"><?= htmlspecialchars($currentUser['nama_lengkap']) ?></p>
-                        <p class="text-xs text-gray-500"><?= ucfirst($currentUser['role'] ?? 'User') ?></p>
+                        <p class="text-xs text-gray-500">
+                            <?php 
+                            $roleLabels = [1 => 'Kepala Bagian', 2 => 'Karyawan', 3 => 'Anak Magang'];
+                            echo $roleLabels[$currentUser['id_role']] ?? ucfirst($currentUser['role'] ?? 'User');
+                            ?>
+                        </p>
                     </div>
 
                     <a href="<?= BASE_URL ?>/profil.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
                         <i class="fas fa-user mr-2 w-4 text-center"></i> Profil Saya
                     </a>
                     
-                    <?php if (isset($currentUser['role']) && $currentUser['role'] === 'superadmin'): ?>
+                    <?php if (isset($currentUser['id_role']) && $currentUser['id_role'] == 1): // Superadmin ?>
                     <a href="<?= BASE_URL ?>/pengaturan.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
                         <i class="fas fa-cog mr-2 w-4 text-center"></i> Setting
                     </a>
@@ -139,11 +172,11 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
             }
         }
 
-        // Tutup dropdown jika klik di luar
+        // Close dropdown on outside click
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('user-dropdown-menu');
             const button = document.getElementById('user-menu-button');
-            if (!menu.classList.contains('hidden') && !button.contains(event.target) && !menu.contains(event.target)) {
+            if (menu && button && !menu.classList.contains('hidden') && !button.contains(event.target) && !menu.contains(event.target)) {
                 menu.classList.add('hidden');
             }
         });
@@ -157,7 +190,8 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Ya, Logout',
-                cancelButtonText: 'Batal'
+                cancelButtonText: 'Batal',
+                reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = '<?= BASE_URL ?>/login.php?action=logout';
@@ -174,8 +208,8 @@ $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
         echo "<script>document.addEventListener('DOMContentLoaded', () => Swal.fire({icon: '{$icon}', title: '" . ucfirst($flash['type']) . "', text: '" . addslashes($flash['message']) . "', timer: 3000, showConfirmButton: false, toast: true, position: 'top-end'}));</script>";
     }
     if (isset($_GET['success']) || isset($_GET['error'])) {
-        $msg = isset($_GET['success']) ? 'Operasi berhasil' : 'Terjadi kesalahan';
+        $msg = isset($_GET['success']) ? $_GET['success'] : $_GET['error'];
         $icon = isset($_GET['success']) ? 'success' : 'error';
-        echo "<script>document.addEventListener('DOMContentLoaded', () => Swal.fire({icon: '{$icon}', title: '" . ucfirst($icon) . "', text: '{$msg}', timer: 3000, showConfirmButton: false, toast: true, position: 'top-end'}));</script>";
+        echo "<script>document.addEventListener('DOMContentLoaded', () => Swal.fire({icon: '{$icon}', title: '" . ucfirst($icon) . "', text: '" . addslashes($msg) . "', timer: 3000, showConfirmButton: false, toast: true, position: 'top-end'}));</script>";
     }
     ?>

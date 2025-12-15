@@ -10,6 +10,8 @@ require_once __DIR__ . '/../modules/surat/surat_service.php';
 requireLogin();
 
 $user = getCurrentUser();
+$userId = $user['id'];
+$userRole = $user['id_role'] ?? 3;
 $pageTitle = 'Arsip Surat';
 
 // Pagination Logic
@@ -17,10 +19,72 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
 
-$totalArsip = SuratService::countArsip();
+// ===== FILTER BERDASARKAN ROLE =====
+// - Superadmin & Admin: Lihat semua arsip
+// - Anak Magang: Lihat hanya arsip surat yang pernah ditugaskan ke dia
+
+$params = [];
+$types = '';
+
+$query = "SELECT s.*, 
+          js.nama_jenis,
+          u.nama_lengkap as dibuat_oleh_nama
+          FROM surat s
+          LEFT JOIN jenis_surat js ON s.id_jenis = js.id
+          LEFT JOIN users u ON s.dibuat_oleh = u.id
+          WHERE s.status_surat = 'arsip'";
+
+// Filter untuk anak magang (role 3)
+if ($userRole == 3) {
+    $query .= " AND s.id IN (
+                    SELECT id_surat FROM disposisi WHERE ke_user_id = ?
+                )";
+    $params[] = $userId;
+    $types .= 'i';
+}
+
+// Filter search jika ada
+if (!empty($_GET['search'])) {
+    $search = '%' . $_GET['search'] . '%';
+    $query .= " AND (s.nomor_agenda LIKE ? OR s.perihal LIKE ? OR s.nomor_surat LIKE ?)";
+    $params[] = $search;
+    $params[] = $search;
+    $params[] = $search;
+    $types .= 'sss';
+}
+
+// Count total untuk pagination
+$countQuery = "SELECT COUNT(*) as total FROM surat s WHERE s.status_surat = 'arsip'";
+if ($userRole == 3) {
+    $countQuery .= " AND s.id IN (SELECT id_surat FROM disposisi WHERE ke_user_id = ?)";
+    $countParams = [$userId];
+    $countTypes = 'i';
+} else {
+    $countParams = [];
+    $countTypes = '';
+}
+
+if (!empty($_GET['search'])) {
+    $search = '%' . $_GET['search'] . '%';
+    $countQuery .= " AND (s.nomor_agenda LIKE ? OR s.perihal LIKE ? OR s.nomor_surat LIKE ?)";
+    $countParams[] = $search;
+    $countParams[] = $search;
+    $countParams[] = $search;
+    $countTypes .= 'sss';
+}
+
+$totalResult = dbSelectOne($countQuery, $countParams, $countTypes);
+$totalArsip = $totalResult['total'] ?? 0;
+
 $pagination = new Pagination($totalArsip, $perPage, $page);
 
-$arsipList = SuratService::getArsip($perPage, $offset);
+// Add order and pagination
+$query .= " ORDER BY s.updated_at DESC LIMIT ? OFFSET ?";
+$params[] = $perPage;
+$params[] = $offset;
+$types .= 'ii';
+
+$arsipList = dbSelect($query, $params, $types);
 ?>
 
 <?php include 'partials/header.php'; ?>
@@ -32,9 +96,39 @@ $arsipList = SuratService::getArsip($perPage, $offset);
         <main class="p-4 sm:p-6 lg:p-8">
             <div class="mb-4 sm:mb-6">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Arsip Surat</h1>
-                <p class="text-sm sm:text-base text-gray-600">Daftar surat yang telah diarsipkan</p>
+                <p class="text-sm sm:text-base text-gray-600">
+                    <?php if ($userRole == 3): ?>
+                        Daftar surat yang telah diarsipkan dan pernah Anda tangani
+                    <?php else: ?>
+                        Daftar surat yang telah diarsipkan
+                    <?php endif; ?>
+                </p>
             </div>
             
+            <!-- Search Filter -->
+            <?php if ($totalArsip > 0 || !empty($_GET['search'])): ?>
+            <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
+                <form method="GET" class="flex gap-2">
+                    <input type="text" 
+                           name="search" 
+                           value="<?= htmlspecialchars($_GET['search'] ?? '') ?>"
+                           placeholder="Cari nomor agenda, perihal, atau nomor surat..." 
+                           class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500">
+                    
+                    <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-search"></i><span class="ml-2 hidden sm:inline">Cari</span>
+                    </button>
+                    
+                    <?php if (!empty($_GET['search'])): ?>
+                    <a href="arsip_surat.php" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors">
+                        <i class="fas fa-times"></i><span class="ml-2 hidden sm:inline">Reset</span>
+                    </a>
+                    <?php endif; ?>
+                </form>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Desktop Table -->
             <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -53,18 +147,26 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                             <tr>
                                 <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                                     <i class="fas fa-archive text-5xl mb-3 text-gray-300"></i>
-                                    <p>Belum ada surat yang diarsipkan</p>
+                                    <p>
+                                        <?php if (!empty($_GET['search'])): ?>
+                                            Tidak ditemukan arsip dengan kata kunci "<?= htmlspecialchars($_GET['search']) ?>"
+                                        <?php elseif ($userRole == 3): ?>
+                                            Belum ada surat yang diarsipkan yang pernah Anda tangani
+                                        <?php else: ?>
+                                            Belum ada surat yang diarsipkan
+                                        <?php endif; ?>
+                                    </p>
                                 </td>
                             </tr>
                             <?php else: ?>
                                 <?php foreach ($arsipList as $surat): ?>
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><?= $surat['nomor_agenda'] ?></div>
-                                        <div class="text-xs text-gray-500"><?= $surat['nomor_surat'] ?></div>
+                                        <div class="text-sm font-medium text-gray-900"><?= htmlspecialchars($surat['nomor_agenda']) ?></div>
+                                        <div class="text-xs text-gray-500"><?= htmlspecialchars($surat['nomor_surat']) ?></div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        <?= $surat['nama_jenis'] ?>
+                                        <?= htmlspecialchars($surat['nama_jenis']) ?>
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="text-sm text-gray-900"><?= truncate($surat['perihal'], 60) ?></div>
@@ -105,16 +207,25 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                 
                 <?php if ($pagination->hasPages()): ?>
                 <div class="border-t border-gray-200 px-4 py-3">
-                    <?= $pagination->render('arsip_surat.php') ?>
+                    <?= $pagination->render('arsip_surat.php', ['search' => $_GET['search'] ?? '']) ?>
                 </div>
                 <?php endif; ?>
             </div>
 
+            <!-- Mobile Card View -->
             <div class="lg:hidden space-y-4">
                 <?php if (empty($arsipList)): ?>
                 <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
                     <i class="fas fa-archive text-5xl mb-3 text-gray-300"></i>
-                    <p>Belum ada surat yang diarsipkan</p>
+                    <p>
+                        <?php if (!empty($_GET['search'])): ?>
+                            Tidak ditemukan arsip dengan kata kunci "<?= htmlspecialchars($_GET['search']) ?>"
+                        <?php elseif ($userRole == 3): ?>
+                            Belum ada surat yang diarsipkan yang pernah Anda tangani
+                        <?php else: ?>
+                            Belum ada surat yang diarsipkan
+                        <?php endif; ?>
+                    </p>
                 </div>
                 <?php else: ?>
                     <?php foreach ($arsipList as $surat): ?>
@@ -122,15 +233,15 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                         <div class="p-4">
                             <div class="flex items-start justify-between mb-3">
                                 <div class="flex-1 min-w-0">
-                                    <h3 class="text-sm font-semibold text-gray-900 truncate"><?= $surat['nomor_agenda'] ?></h3>
-                                    <p class="text-xs text-gray-500"><?= $surat['nomor_surat'] ?></p>
+                                    <h3 class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($surat['nomor_agenda']) ?></h3>
+                                    <p class="text-xs text-gray-500"><?= htmlspecialchars($surat['nomor_surat']) ?></p>
                                 </div>
                                 <span class="ml-2 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full whitespace-nowrap">
-                                    <?= $surat['nama_jenis'] ?>
+                                    <?= htmlspecialchars($surat['nama_jenis']) ?>
                                 </span>
                             </div>
                             
-                            <p class="text-sm text-gray-700 mb-2 line-clamp-2"><?= $surat['perihal'] ?></p>
+                            <p class="text-sm text-gray-700 mb-2 line-clamp-2"><?= htmlspecialchars($surat['perihal']) ?></p>
                             
                             <?php if ($surat['dari_instansi']): ?>
                             <p class="text-xs text-gray-500 mb-2">
@@ -164,7 +275,7 @@ $arsipList = SuratService::getArsip($perPage, $offset);
                     
                     <?php if ($pagination->hasPages()): ?>
                     <div class="bg-white rounded-lg shadow p-4">
-                        <?= $pagination->render('arsip_surat.php') ?>
+                        <?= $pagination->render('arsip_surat.php', ['search' => $_GET['search'] ?? '']) ?>
                     </div>
                     <?php endif; ?>
                 <?php endif; ?>
@@ -174,3 +285,5 @@ $arsipList = SuratService::getArsip($perPage, $offset);
         <?php include 'partials/footer.php'; ?>
     </div>
 </div>
+
+<?php include 'partials/footer.php'; ?>

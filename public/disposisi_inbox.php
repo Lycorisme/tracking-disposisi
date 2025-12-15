@@ -10,10 +10,13 @@ require_once __DIR__ . '/../modules/disposisi/disposisi_service.php';
 requireLogin();
 
 $user = getCurrentUser();
+$userId = $user['id'];
+$userRole = $user['id_role'] ?? 3;
 $pageTitle = 'Disposisi Masuk';
 
+// Filter disposisi - hanya yang ditujukan ke user ini
 $filters = [
-    'ke_user_id' => $user['id'],
+    'ke_user_id' => $userId, // PENTING: Filter by user
     'status_disposisi' => $_GET['status'] ?? '',
     'search' => $_GET['search'] ?? ''
 ];
@@ -37,9 +40,10 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
         <main class="p-4 sm:p-6 lg:p-8">
             <div class="mb-4 sm:mb-6">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Disposisi Masuk</h1>
-                <p class="text-sm sm:text-base text-gray-600">Daftar disposisi yang dikirim kepada Anda</p>
+                <p class="text-sm sm:text-base text-gray-600">Disposisi surat yang ditujukan kepada Anda</p>
             </div>
             
+            <!-- Filter Form -->
             <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
                 <form method="GET" class="space-y-3 sm:space-y-0 sm:flex sm:gap-2">
                     <input type="text" name="search" value="<?= htmlspecialchars($filters['search']) ?>"
@@ -69,6 +73,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                 </form>
             </div>
             
+            <!-- Desktop Table -->
             <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -82,7 +87,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="bg-white divide-y divide-gray-200" id="disposisiTableBody">
                             <?php if (empty($disposisiList)): ?>
                             <tr>
                                 <td colspan="6" class="px-6 py-8 text-center text-gray-500">
@@ -91,13 +96,21 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                                 </td>
                             </tr>
                             <?php else: ?>
-                                <?php foreach ($disposisiList as $disp): ?>
-                                <tr class="hover:bg-gray-50 transition-colors">
+                                <?php foreach ($disposisiList as $disp): 
+                                    // Background color untuk row
+                                    $rowBgClass = '';
+                                    if ($disp['status_disposisi'] === 'ditolak') {
+                                        $rowBgClass = 'bg-red-50';
+                                    } elseif ($disp['status_disposisi'] === 'selesai') {
+                                        $rowBgClass = 'bg-green-50';
+                                    }
+                                ?>
+                                <tr class="hover:bg-gray-50 transition-colors <?= $rowBgClass ?>" id="row-<?= $disp['id'] ?>">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><?= $disp['dari_user_nama'] ?></div>
+                                        <div class="text-sm font-medium text-gray-900"><?= htmlspecialchars($disp['dari_user_nama']) ?></div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="text-sm font-medium text-gray-900"><?= $disp['nomor_agenda'] ?></div>
+                                        <div class="text-sm font-medium text-gray-900"><?= htmlspecialchars($disp['nomor_agenda']) ?></div>
                                         <div class="text-xs text-gray-500"><?= truncate($disp['perihal'], 40) ?></div>
                                     </td>
                                     <td class="px-6 py-4">
@@ -109,8 +122,8 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                                         <?= formatDateTime($disp['tanggal_disposisi']) ?>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full <?= getDisposisiStatusBadge($disp['status_disposisi']) ?>">
-                                            <?= ucfirst($disp['status_disposisi']) ?>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full status-badge-<?= $disp['id'] ?> <?= getDisposisiStatusBadge($disp['status_disposisi']) ?>">
+                                            <span class="status-text-<?= $disp['id'] ?>"><?= ucfirst($disp['status_disposisi']) ?></span>
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -140,28 +153,37 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                 <?php endif; ?>
             </div>
 
-            <div class="lg:hidden space-y-4">
+            <!-- Mobile Card View -->
+            <div class="lg:hidden space-y-4" id="disposisiMobileContainer">
                 <?php if (empty($disposisiList)): ?>
                 <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
                     <i class="fas fa-inbox text-5xl mb-3 text-gray-300"></i>
                     <p>Tidak ada disposisi masuk</p>
                 </div>
                 <?php else: ?>
-                    <?php foreach ($disposisiList as $disp): ?>
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <?php foreach ($disposisiList as $disp): 
+                        // Background color untuk card mobile
+                        $cardBgClass = '';
+                        if ($disp['status_disposisi'] === 'ditolak') {
+                            $cardBgClass = 'border-l-4 border-red-500 bg-red-50';
+                        } elseif ($disp['status_disposisi'] === 'selesai') {
+                            $cardBgClass = 'border-l-4 border-green-500 bg-green-50';
+                        }
+                    ?>
+                    <div class="bg-white rounded-lg shadow overflow-hidden <?= $cardBgClass ?>" id="card-<?= $disp['id'] ?>">
                         <div class="p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full <?= getDisposisiStatusBadge($disp['status_disposisi']) ?>">
-                                    <?= ucfirst($disp['status_disposisi']) ?>
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full status-badge-<?= $disp['id'] ?> <?= getDisposisiStatusBadge($disp['status_disposisi']) ?>">
+                                    <span class="status-text-<?= $disp['id'] ?>"><?= ucfirst($disp['status_disposisi']) ?></span>
                                 </span>
                                 <span class="text-xs text-gray-500">
-                                    <i class="fas fa-user mr-1"></i><?= $disp['dari_user_nama'] ?>
+                                    <i class="fas fa-user mr-1"></i><?= htmlspecialchars($disp['dari_user_nama']) ?>
                                 </span>
                             </div>
                             
                             <div class="mb-3">
-                                <p class="text-sm font-semibold text-gray-900"><?= $disp['nomor_agenda'] ?></p>
-                                <p class="text-xs text-gray-500 line-clamp-2"><?= $disp['perihal'] ?></p>
+                                <p class="text-sm font-semibold text-gray-900"><?= htmlspecialchars($disp['nomor_agenda']) ?></p>
+                                <p class="text-xs text-gray-500 line-clamp-2"><?= htmlspecialchars($disp['perihal']) ?></p>
                             </div>
                             
                             <?php if ($disp['catatan']): ?>
@@ -204,6 +226,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
     </div>
 </div>
 
+<!-- Modal Update Status -->
 <div id="updateModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
@@ -226,7 +249,7 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
                         <select name="status" id="statusSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                            <option value="diterima">Diterima</option>
+                            <!-- HAPUS option "diterima" karena auto-accept -->
                             <option value="diproses">Diproses</option>
                             <option value="selesai">Selesai</option>
                             <option value="ditolak">Ditolak</option>
@@ -252,9 +275,20 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-// Path ke Handler
 const disposisiHandlerPath = '../modules/disposisi/disposisi_handler.php';
+
+function getStatusBadgeClass(status) {
+    const badges = {
+        'dikirim': 'bg-blue-100 text-blue-800',
+        'diterima': 'bg-indigo-100 text-indigo-800',
+        'diproses': 'bg-yellow-100 text-yellow-800',
+        'selesai': 'bg-green-100 text-green-800',
+        'ditolak': 'bg-red-100 text-red-800'
+    };
+    return badges[status] || 'bg-gray-100 text-gray-800';
+}
 
 function openUpdateModal(disposisi) {
     document.getElementById('disposisiId').value = disposisi.id;
@@ -262,28 +296,30 @@ function openUpdateModal(disposisi) {
     document.getElementById('modalPerihal').textContent = disposisi.perihal;
     
     const statusSelect = document.getElementById('statusSelect');
-    if (disposisi.status_disposisi === 'dikirim') {
-        statusSelect.value = 'diterima';
-    } else if (disposisi.status_disposisi === 'diterima') {
+    if (disposisi.status_disposisi === 'dikirim' || disposisi.status_disposisi === 'diterima') {
         statusSelect.value = 'diproses';
     } else {
         statusSelect.value = 'selesai';
     }
     
     document.getElementById('updateModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeUpdateModal() {
     document.getElementById('updateModal').classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
-// Handle AJAX Submit
 $('#updateDisposisiForm').on('submit', function(e) {
     e.preventDefault();
     
     const btn = $('#btnUpdate');
     const originalText = btn.html();
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Loading...');
+
+    const disposisiId = $('#disposisiId').val();
+    const newStatus = $('#statusSelect').val();
 
     $.ajax({
         url: disposisiHandlerPath,
@@ -295,13 +331,45 @@ $('#updateDisposisiForm').on('submit', function(e) {
             
             if (response.status === 'success') {
                 closeUpdateModal();
+                
+                // Update UI Real-time
+                const statusBadge = $('.status-badge-' + disposisiId);
+                const statusText = $('.status-text-' + disposisiId);
+                const row = $('#row-' + disposisiId);
+                const card = $('#card-' + disposisiId);
+                
+                // Update badge
+                statusBadge.removeClass('bg-blue-100 text-blue-800 bg-indigo-100 text-indigo-800 bg-yellow-100 text-yellow-800 bg-green-100 text-green-800 bg-red-100 text-red-800');
+                statusBadge.addClass(getStatusBadgeClass(newStatus));
+                statusText.text(newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
+                
+                // Update row background
+                row.removeClass('bg-red-50 bg-green-50');
+                card.removeClass('border-l-4 border-red-500 bg-red-50 border-l-4 border-green-500 bg-green-50');
+                
+                if (newStatus === 'ditolak') {
+                    row.addClass('bg-red-50');
+                    card.addClass('border-l-4 border-red-500 bg-red-50');
+                } else if (newStatus === 'selesai') {
+                    row.addClass('bg-green-50');
+                    card.addClass('border-l-4 border-green-500 bg-green-50');
+                }
+                
+                // Hide update button
+                if (newStatus === 'selesai' || newStatus === 'ditolak') {
+                    $('#row-' + disposisiId + ' button[onclick*="openUpdateModal"]').fadeOut();
+                    $('#card-' + disposisiId + ' button[onclick*="openUpdateModal"]').fadeOut();
+                }
+                
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil',
                     text: response.message,
-                    timer: 1500,
-                    showConfirmButton: false
-                }).then(() => location.reload());
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
             } else {
                 Swal.fire('Gagal', response.message, 'error');
             }
@@ -309,6 +377,18 @@ $('#updateDisposisiForm').on('submit', function(e) {
         error: function(xhr) {
             btn.prop('disabled', false).html(originalText);
             let msg = 'Terjadi kesalahan sistem';
+            
+            if (xhr.status === 401) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Sesi Habis',
+                    text: 'Sesi login Anda telah habis. Halaman akan di-refresh.',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+                return;
+            }
+            
             try {
                 const res = JSON.parse(xhr.responseText);
                 if(res.message) msg = res.message;

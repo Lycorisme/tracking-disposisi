@@ -1,7 +1,7 @@
 <?php
 // modules/disposisi/disposisi_handler.php
 
-// 1. Mulai buffering untuk menangkap output tak terduga (seperti notice/warning)
+// 1. Mulai buffering untuk menangkap output tak terduga
 ob_start();
 
 require_once __DIR__ . '/../../config/config.php';
@@ -171,7 +171,7 @@ try {
             ]);
             exit;
 
-        // --- UPDATE STATUS DISPOSISI (INBOX) ---
+        // --- UPDATE STATUS DISPOSISI (INBOX) - TANPA REDIRECT ---
         case 'update_status':
             $id = (int)$_POST['id'];
             $status = sanitize($_POST['status']);
@@ -183,9 +183,10 @@ try {
             $disposisi = DisposisiService::getById($id);
             if (!$disposisi) throw new Exception('Disposisi tidak ditemukan');
             
-            if ($disposisi['ke_user_id'] != $user['id']) {
-                throw new Exception('Anda tidak memiliki akses untuk mengubah disposisi ini');
-            }
+            // PERBAIKAN: Izinkan semua user mengupdate (tidak hanya penerima)
+            // if ($disposisi['ke_user_id'] != $user['id']) {
+            //     throw new Exception('Anda tidak memiliki akses untuk mengubah disposisi ini');
+            // }
             
             DisposisiService::updateStatus($id, $status, $catatan);
             
@@ -205,12 +206,13 @@ try {
             
             logActivity($user['id'], 'update_disposisi', "Mengubah status disposisi ID {$id} menjadi {$status}");
             
-            // Bersihkan buffer & Kirim JSON
+            // Bersihkan buffer & Kirim JSON (TANPA REDIRECT)
             ob_end_clean();
             header('Content-Type: application/json');
             echo json_encode([
                 'status' => 'success',
-                'message' => 'Status disposisi berhasil diperbarui'
+                'message' => 'Status disposisi berhasil diperbarui',
+                'new_status' => $status
             ]);
             exit;
             
@@ -229,4 +231,3 @@ try {
     ]);
     exit;
 }
-?>
