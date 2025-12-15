@@ -10,6 +10,16 @@ if (file_exists(__DIR__ . '/../../modules/users/users_service.php')) {
     require_once __DIR__ . '/../../modules/users/users_service.php';
 }
 
+// Load NotificationService untuk badge
+if (file_exists(__DIR__ . '/../../modules/notifications/notification_service.php')) {
+    require_once __DIR__ . '/../../modules/notifications/notification_service.php';
+}
+
+// Load DisposisiService untuk badge inbox
+if (file_exists(__DIR__ . '/../../modules/disposisi/disposisi_service.php')) {
+    require_once __DIR__ . '/../../modules/disposisi/disposisi_service.php';
+}
+
 $currentPage = basename($_SERVER['PHP_SELF']);
 $user = getCurrentUser();
 $userRole = $user['id_role'] ?? 3; // Default ke role 3 (user/anak magang)
@@ -23,6 +33,12 @@ $appLogo = function_exists('getSetting') ? getSetting('app_logo') : null;
 $pendingCount = 0;
 if (hasRole('superadmin') && class_exists('UsersService')) {
     $pendingCount = UsersService::countPending();
+}
+
+// Hitung notifikasi aktif untuk badge Disposisi Masuk
+$inboxBadgeCount = 0;
+if (class_exists('DisposisiService')) {
+    $inboxBadgeCount = DisposisiService::getActiveInboxCount($user['id']);
 }
 
 function isActive($page) {
@@ -118,10 +134,17 @@ function isGroupActive($pages) {
                     Semua Surat
                 </a>
                 
-                <!-- Disposisi Masuk - Semua Role -->
-                <a href="<?= BASE_URL ?>/disposisi_inbox.php" class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors <?= isActive('disposisi_inbox.php') ?>">
-                    <i class="fas fa-inbox w-6 text-center mr-2"></i>
-                    Disposisi Masuk
+                <!-- Disposisi Masuk - Semua Role dengan Badge -->
+                <a href="<?= BASE_URL ?>/disposisi_inbox.php" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors <?= isActive('disposisi_inbox.php') ?>">
+                    <div class="flex items-center">
+                        <i class="fas fa-inbox w-6 text-center mr-2"></i>
+                        Disposisi Masuk
+                    </div>
+                    <?php if ($inboxBadgeCount > 0): ?>
+                    <span id="sidebar-inbox-badge" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                        <?= $inboxBadgeCount > 99 ? '99+' : $inboxBadgeCount ?>
+                    </span>
+                    <?php endif; ?>
                 </a>
                 
                 <!-- Disposisi Keluar - HIDE untuk Anak Magang (role 3) -->
@@ -132,13 +155,11 @@ function isGroupActive($pages) {
                 </a>
                 <?php endif; ?>
                 
-                <!-- Monitoring Disposisi - HIDE untuk Anak Magang -->
-                <?php if ($userRole != 3): ?>
+                <!-- Monitoring Disposisi - Semua Role bisa akses, tapi filter berbeda -->
                 <a href="<?= BASE_URL ?>/disposisi.php" class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors <?= isActive('disposisi.php') ?>">
                     <i class="fas fa-exchange-alt w-6 text-center mr-2"></i>
                     Monitoring Disposisi
                 </a>
-                <?php endif; ?>
             </div>
         </div>
 

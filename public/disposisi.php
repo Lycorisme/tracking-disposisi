@@ -8,10 +8,19 @@ require_once __DIR__ . '/../includes/pagination.php';
 require_once __DIR__ . '/../modules/disposisi/disposisi_service.php';
 
 requireLogin();
-requireRole(['admin', 'superadmin']);
 
 $user = getCurrentUser();
-$pageTitle = 'Semua Disposisi';
+$userId = $user['id'];
+$userRole = $user['id_role'] ?? 3;
+$pageTitle = 'Monitoring Disposisi';
+
+// Determine page title based on role
+$pageSubtitle = 'Monitoring semua disposisi surat';
+if ($userRole == 2) {
+    $pageSubtitle = 'Monitoring disposisi surat yang Anda tangani dan delegasikan';
+} elseif ($userRole == 3) {
+    $pageSubtitle = 'Monitoring disposisi surat yang Anda tangani';
+}
 
 $filters = [
     'status_disposisi' => $_GET['status'] ?? '',
@@ -23,10 +32,11 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
 
-$totalDisposisi = DisposisiService::count($filters);
+// Get data based on role using the new method
+$totalDisposisi = DisposisiService::countForMonitoring($userId, $userRole, $filters);
 $pagination = new Pagination($totalDisposisi, $perPage, $page);
 
-$disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
+$disposisiList = DisposisiService::getForMonitoring($userId, $userRole, $filters, $perPage, $offset);
 ?>
 
 <?php include 'partials/header.php'; ?>
@@ -37,8 +47,18 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
     <div class="flex-1 lg:ml-64 transition-all duration-300">
         <main class="p-4 sm:p-6 lg:p-8">
             <div class="mb-4 sm:mb-6">
-                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Semua Disposisi</h1>
-                <p class="text-sm sm:text-base text-gray-600">Monitoring semua disposisi surat</p>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Monitoring Disposisi</h1>
+                <p class="text-sm sm:text-base text-gray-600"><?= $pageSubtitle ?></p>
+                
+                <?php if ($userRole == 1): ?>
+                <div class="mt-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                    <i class="fas fa-shield-alt mr-1"></i> Mode Admin: Melihat semua disposisi
+                </div>
+                <?php elseif ($userRole == 2): ?>
+                <div class="mt-2 inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                    <i class="fas fa-user-tie mr-1"></i> Termasuk surat yang didelegasikan ke magang
+                </div>
+                <?php endif; ?>
             </div>
             
             <div class="bg-white rounded-lg shadow p-4 mb-4 sm:mb-6">
@@ -96,13 +116,13 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4">
                                         <div class="text-sm">
-                                            <span class="font-medium text-gray-900"><?= $disp['dari_user_nama'] ?></span>
+                                            <span class="font-medium text-gray-900"><?= htmlspecialchars($disp['dari_user_nama']) ?></span>
                                             <i class="fas fa-arrow-right text-gray-400 mx-2"></i>
-                                            <span class="font-medium text-gray-900"><?= $disp['ke_user_nama'] ?></span>
+                                            <span class="font-medium text-gray-900"><?= htmlspecialchars($disp['ke_user_nama']) ?></span>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="text-sm font-medium text-gray-900"><?= $disp['nomor_agenda'] ?></div>
+                                        <div class="text-sm font-medium text-gray-900"><?= htmlspecialchars($disp['nomor_agenda']) ?></div>
                                         <div class="text-xs text-gray-500"><?= truncate($disp['perihal'], 40) ?></div>
                                     </td>
                                     <td class="px-6 py-4">
@@ -161,14 +181,14 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
                             
                             <div class="mb-3">
                                 <div class="flex items-center text-sm mb-2">
-                                    <span class="font-medium text-gray-900"><?= $disp['dari_user_nama'] ?></span>
+                                    <span class="font-medium text-gray-900"><?= htmlspecialchars($disp['dari_user_nama']) ?></span>
                                     <i class="fas fa-arrow-right text-gray-400 mx-2"></i>
-                                    <span class="font-medium text-gray-900"><?= $disp['ke_user_nama'] ?></span>
+                                    <span class="font-medium text-gray-900"><?= htmlspecialchars($disp['ke_user_nama']) ?></span>
                                 </div>
                             </div>
                             
                             <div class="mb-3">
-                                <p class="text-sm font-semibold text-gray-900"><?= $disp['nomor_agenda'] ?></p>
+                                <p class="text-sm font-semibold text-gray-900"><?= htmlspecialchars($disp['nomor_agenda']) ?></p>
                                 <p class="text-xs text-gray-500 line-clamp-2"><?= $disp['perihal'] ?></p>
                             </div>
                             
@@ -198,3 +218,5 @@ $disposisiList = DisposisiService::getAll($filters, $perPage, $offset);
         <?php include 'partials/footer.php'; ?>
     </div>
 </div>
+
+<?php include 'partials/footer.php'; ?>

@@ -127,8 +127,9 @@ try {
             $surat = SuratService::getById($suratId);
             if (!$surat) throw new Exception('Surat tidak ditemukan');
             
-            // Validasi hak akses
-            if (!DisposisiService::canDispose($user['id'], $suratId) && $surat['dibuat_oleh'] != $user['id']) {
+            // Validasi hak akses - cek apakah user adalah stakeholder atau pembuat surat
+            $canDispose = DisposisiService::canDispose($user['id'], $suratId) || $surat['dibuat_oleh'] == $user['id'];
+            if (!$canDispose) {
                 throw new Exception('Anda tidak memiliki akses untuk mendisposisi surat ini');
             }
             
@@ -147,7 +148,12 @@ try {
                 'catatan' => $catatan
             ];
             
-            DisposisiService::create($data);
+            // Create disposisi (sudah termasuk stakeholder tracking & notifikasi)
+            $disposisiId = DisposisiService::create($data);
+            
+            if (!$disposisiId) {
+                throw new Exception('Gagal membuat disposisi');
+            }
             
             // Update status surat jika masih baru
             if ($surat['status_surat'] === 'baru') {
@@ -183,26 +189,8 @@ try {
             $disposisi = DisposisiService::getById($id);
             if (!$disposisi) throw new Exception('Disposisi tidak ditemukan');
             
-            // PERBAIKAN: Izinkan semua user mengupdate (tidak hanya penerima)
-            // if ($disposisi['ke_user_id'] != $user['id']) {
-            //     throw new Exception('Anda tidak memiliki akses untuk mengubah disposisi ini');
-            // }
-            
+            // Update status (sudah termasuk notifikasi dan stakeholder management)
             DisposisiService::updateStatus($id, $status, $catatan);
-            
-            // Update status surat induk jika perlu
-            if ($status === 'selesai') {
-                $allDispositions = DisposisiService::getHistoryBySurat($disposisi['id_surat']);
-                $allCompleted = true;
-                foreach ($allDispositions as $disp) {
-                    if ($disp['status_disposisi'] !== 'selesai' && $disp['id'] != $id) {
-                        $allCompleted = false; break;
-                    }
-                }
-                if ($allCompleted) SuratService::updateStatus($disposisi['id_surat'], 'disetujui');
-            } elseif ($status === 'ditolak') {
-                SuratService::updateStatus($disposisi['id_surat'], 'ditolak');
-            }
             
             logActivity($user['id'], 'update_disposisi', "Mengubah status disposisi ID {$id} menjadi {$status}");
             

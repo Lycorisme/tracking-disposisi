@@ -113,13 +113,11 @@ class SuratService {
         $year = date('Y');
         
         // Format: [001]/SRT/[2025]
-        // Cari nomor terakhir di tahun ini yang mengikuti format sistem
         $sql = "SELECT nomor_surat FROM surat WHERE nomor_surat LIKE '%/SRT/$year' ORDER BY id DESC LIMIT 1";
         $result = $conn->query($sql);
         
         $lastNum = 0;
         if ($result && $row = $result->fetch_assoc()) {
-            // Pecah string "001/SRT/2025" -> ambil "001"
             $parts = explode('/', $row['nomor_surat']);
             if (isset($parts[0]) && is_numeric($parts[0])) {
                 $lastNum = (int)$parts[0];
@@ -127,15 +125,14 @@ class SuratService {
         }
         
         $nextNum = $lastNum + 1;
-        // Return format 3 digit: 001/SRT/2025
         return sprintf("%03d/SRT/%s", $nextNum, $year);
     }
 
-    // Buat Surat Baru (MODIFIED)
+    // Buat Surat Baru (dengan stakeholder tracking)
     public static function create($data) {
         $conn = getConnection();
         
-        // 1. Generate Nomor Agenda (Tetap)
+        // 1. Generate Nomor Agenda
         $today = date('Ymd');
         $checkSql = "SELECT COUNT(*) as total FROM surat WHERE DATE(created_at) = CURDATE()";
         $checkResult = $conn->query($checkSql)->fetch_assoc();
@@ -154,7 +151,7 @@ class SuratService {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("isssssssssi", 
             $data['id_jenis'], 
-            $nomorSurat,        // Gunakan nomor surat yang sudah diproses
+            $nomorSurat,
             $nomorAgenda,
             $data['tanggal_surat'], 
             $data['tanggal_diterima'],
@@ -166,7 +163,39 @@ class SuratService {
             $data['dibuat_oleh']
         );
         
-        return $stmt->execute();
+        $result = $stmt->execute();
+        
+        if ($result) {
+            $suratId = $conn->insert_id;
+            
+            // Add creator as stakeholder (pembuat)
+            self::addStakeholder($suratId, $data['dibuat_oleh'], 'pembuat');
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Add stakeholder untuk surat
+     */
+    public static function addStakeholder($suratId, $userId, $roleType, $assignedBy = null) {
+        // Check if already exists
+        $existing = dbSelectOne(
+            "SELECT id FROM surat_stakeholders WHERE surat_id = ? AND user_id = ?",
+            [$suratId, $userId],
+            'ii'
+        );
+        
+        if ($existing) {
+            return true; // Already a stakeholder
+        }
+        
+        $query = "INSERT INTO surat_stakeholders (surat_id, user_id, role_type, assigned_by, assigned_at, is_active) 
+                  VALUES (?, ?, ?, ?, NOW(), 1)";
+        
+        return dbExecute($query, [$suratId, $userId, $roleType, $assignedBy], 'iisi');
     }
 
     // Update Surat
@@ -199,12 +228,23 @@ class SuratService {
         return $stmt->execute();
     }
 
-    // Arsipkan Surat
+    // Arsipkan Surat (dengan clear notifications)
     public static function arsipkan($id) {
         $conn = getConnection();
         $stmt = $conn->prepare("UPDATE surat SET status_surat = 'arsip' WHERE id = ?");
         $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        $result = $stmt->execute();
+        
+        if ($result) {
+            // Clear notifications dan deactivate stakeholders
+            if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
+                require_once __DIR__ . '/../notifications/notification_service.php';
+                NotificationService::clearBySurat($id);
+                NotificationService::deactivateStakeholders($id);
+            }
+        }
+        
+        return $result;
     }
     
     public static function countArsip() {
@@ -268,11 +308,23 @@ class SuratService {
         return ['success' => false, 'message' => 'Gagal mengupload file ke server'];
     }
 
+    // Update status surat (dengan notifikasi handling)
     public static function updateStatus($id, $status) {
         $conn = getConnection();
         $stmt = $conn->prepare("UPDATE surat SET status_surat = ? WHERE id = ?");
         $stmt->bind_param("si", $status, $id);
-        return $stmt->execute();
+        $result = $stmt->execute();
+        
+        if ($result && in_array($status, ['disetujui', 'ditolak', 'arsip'])) {
+            // Clear notifications dan deactivate stakeholders
+            if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
+                require_once __DIR__ . '/../notifications/notification_service.php';
+                NotificationService::clearBySurat($id);
+                NotificationService::deactivateStakeholders($id);
+            }
+        }
+        
+        return $result;
     }
 }
 ?>

@@ -59,6 +59,16 @@ try {
             ]);
             break;
             
+        case 'count_active':
+            // Count active surat yang user terlibat (untuk badge sidebar)
+            $count = NotificationService::countActiveNotifications($user['id']);
+            
+            echo json_encode([
+                'status' => 'success',
+                'count' => $count
+            ]);
+            break;
+            
         default:
             throw new Exception('Invalid action');
     }

@@ -27,7 +27,8 @@ class NotificationService {
     }
     
     /**
-     * Notifikasi: Surat baru ditugaskan (untuk ANAK MAGANG)
+     * Notifikasi: Disposisi baru diterima
+     * Dipanggil saat ada disposisi baru ke user
      */
     public static function notifyDisposisiBaru($disposisiId) {
         $query = "SELECT d.*, s.nomor_agenda, s.perihal,
@@ -45,11 +46,11 @@ class NotificationService {
             self::create([
                 'user_id' => $disposisi['ke_user_id'],
                 'type' => 'disposisi_baru',
-                'title' => 'Surat Baru Ditugaskan',
-                'message' => "Anda ditugaskan untuk menangani surat: {$disposisi['nomor_agenda']} - {$disposisi['perihal']}",
+                'title' => 'Disposisi Surat Baru',
+                'message' => "Anda menerima disposisi surat: {$disposisi['nomor_agenda']} - {$disposisi['perihal']} dari {$disposisi['dari_nama']}",
                 'surat_id' => $disposisi['id_surat'],
                 'disposisi_id' => $disposisiId,
-                'url' => '/public/surat_detail.php?id=' . $disposisi['id_surat']
+                'url' => '/surat_detail.php?id=' . $disposisi['id_surat']
             ]);
         }
     }
@@ -86,14 +87,14 @@ class NotificationService {
                     'title' => 'Surat Baru Masuk',
                     'message' => "Surat baru: {$surat['nomor_agenda']} - {$surat['perihal']}",
                     'surat_id' => $suratId,
-                    'url' => '/public/surat_detail.php?id=' . $suratId
+                    'url' => '/surat_detail.php?id=' . $suratId
                 ]);
             }
         }
     }
     
     /**
-     * Notifikasi: Update status dari anak magang (untuk KARYAWAN yang assign)
+     * Notifikasi: Update status dari user (untuk user yang assign)
      */
     public static function notifySuratUpdate($disposisiId, $newStatus) {
         $query = "SELECT d.*, s.nomor_agenda, s.perihal,
@@ -111,20 +112,20 @@ class NotificationService {
             self::create([
                 'user_id' => $disposisi['dari_user_id'], // Kirim ke yang assign
                 'type' => 'surat_update',
-                'title' => "Surat {$statusLabel}",
-                'message' => "{$disposisi['user_nama']} telah mengupdate status surat {$disposisi['nomor_agenda']} menjadi: {$statusLabel}",
+                'title' => "Status Surat: {$statusLabel}",
+                'message' => "{$disposisi['user_nama']} mengubah status surat {$disposisi['nomor_agenda']} menjadi: {$statusLabel}",
                 'surat_id' => $disposisi['id_surat'],
                 'disposisi_id' => $disposisiId,
-                'url' => '/public/surat_detail.php?id=' . $disposisi['id_surat']
+                'url' => '/surat_detail.php?id=' . $disposisi['id_surat']
             ]);
         }
     }
     
     /**
-     * Notifikasi: Surat selesai (untuk SUPERADMIN)
+     * Notifikasi: Surat selesai (untuk SUPERADMIN & Pembuat surat)
      */
     public static function notifySuratSelesai($suratId) {
-        $query = "SELECT nomor_agenda, perihal FROM surat WHERE id = ?";
+        $query = "SELECT nomor_agenda, perihal, dibuat_oleh FROM surat WHERE id = ?";
         $surat = dbSelectOne($query, [$suratId], 'i');
         
         if ($surat) {
@@ -137,34 +138,84 @@ class NotificationService {
                 self::create([
                     'user_id' => $admin['id'],
                     'type' => 'surat_selesai',
-                    'title' => 'Surat Selesai Dianalisa',
-                    'message' => "Surat {$surat['nomor_agenda']} telah selesai dianalisa",
+                    'title' => 'Surat Selesai Diproses',
+                    'message' => "Surat {$surat['nomor_agenda']} - {$surat['perihal']} telah selesai diproses",
                     'surat_id' => $suratId,
-                    'url' => '/public/surat_detail.php?id=' . $suratId
+                    'url' => '/surat_detail.php?id=' . $suratId
+                ]);
+            }
+            
+            // Kirim ke pembuat surat jika bukan superadmin
+            $pembuat = dbSelectOne(
+                "SELECT id, id_role FROM users WHERE id = ?",
+                [$surat['dibuat_oleh']],
+                'i'
+            );
+            
+            if ($pembuat && $pembuat['id_role'] != 1) {
+                self::create([
+                    'user_id' => $pembuat['id'],
+                    'type' => 'surat_selesai',
+                    'title' => 'Surat Anda Selesai Diproses',
+                    'message' => "Surat {$surat['nomor_agenda']} - {$surat['perihal']} telah selesai diproses",
+                    'surat_id' => $suratId,
+                    'url' => '/surat_detail.php?id=' . $suratId
                 ]);
             }
         }
     }
     
     /**
-     * Get notifikasi user (max 5 terbaru)
+     * Get notifikasi user dengan filter surat aktif
+     * Notifikasi hanya muncul jika surat masih aktif (belum selesai/ditolak/arsip)
      */
     public static function getRecent($userId, $limit = 5) {
-        $query = "SELECT * FROM notifications 
-                  WHERE user_id = ? 
-                  ORDER BY created_at DESC 
+        $query = "SELECT n.*, s.status_surat 
+                  FROM notifications n
+                  LEFT JOIN surat s ON n.surat_id = s.id
+                  WHERE n.user_id = ? 
+                  AND (
+                      s.id IS NULL 
+                      OR s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')
+                      OR n.type = 'surat_selesai'
+                  )
+                  ORDER BY n.created_at DESC 
                   LIMIT ?";
         
         return dbSelect($query, [$userId, $limit], 'ii');
     }
     
     /**
-     * Count unread notifications
+     * Count unread notifications (hanya surat yang masih aktif)
      */
     public static function countUnread($userId) {
         $query = "SELECT COUNT(*) as total 
-                  FROM notifications 
-                  WHERE user_id = ? AND is_read = 0";
+                  FROM notifications n
+                  LEFT JOIN surat s ON n.surat_id = s.id
+                  WHERE n.user_id = ? 
+                  AND n.is_read = 0
+                  AND (
+                      s.id IS NULL 
+                      OR s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')
+                      OR n.type = 'surat_selesai'
+                  )";
+        
+        $result = dbSelectOne($query, [$userId], 'i');
+        return $result['total'] ?? 0;
+    }
+    
+    /**
+     * Count total notifikasi aktif (untuk badge sidebar)
+     * Menghitung surat yang user terlibat dan masih aktif
+     */
+    public static function countActiveNotifications($userId) {
+        // Hitung surat aktif dimana user adalah stakeholder
+        $query = "SELECT COUNT(DISTINCT ss.surat_id) as total
+                  FROM surat_stakeholders ss
+                  JOIN surat s ON ss.surat_id = s.id
+                  WHERE ss.user_id = ?
+                  AND ss.is_active = 1
+                  AND s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')";
         
         $result = dbSelectOne($query, [$userId], 'i');
         return $result['total'] ?? 0;
@@ -190,6 +241,30 @@ class NotificationService {
                   WHERE user_id = ? AND is_read = 0";
         
         return dbExecute($query, [$userId], 'i');
+    }
+    
+    /**
+     * Clear/hapus notifikasi berdasarkan surat_id
+     * Dipanggil saat surat selesai/ditolak/diarsipkan
+     */
+    public static function clearBySurat($suratId) {
+        // Mark all notifications related to this surat as read
+        $query = "UPDATE notifications 
+                  SET is_read = 1, read_at = CURRENT_TIMESTAMP 
+                  WHERE surat_id = ? AND is_read = 0";
+        
+        return dbExecute($query, [$suratId], 'i');
+    }
+    
+    /**
+     * Deactivate stakeholders when surat is completed
+     */
+    public static function deactivateStakeholders($suratId) {
+        $query = "UPDATE surat_stakeholders 
+                  SET is_active = 0 
+                  WHERE surat_id = ?";
+        
+        return dbExecute($query, [$suratId], 'i');
     }
     
     /**

@@ -6,10 +6,76 @@ require_once __DIR__ . '/../../config/database.php';
 class DisposisiService {
     
     // ==========================================
-    // EXISTING METHODS (DARI FILE LAMA)
+    // STAKEHOLDER METHODS
+    // ==========================================
+    
+    /**
+     * Add user sebagai stakeholder surat
+     */
+    public static function addStakeholder($suratId, $userId, $roleType, $assignedBy = null) {
+        // Check if already exists
+        $existing = dbSelectOne(
+            "SELECT id FROM surat_stakeholders WHERE surat_id = ? AND user_id = ?",
+            [$suratId, $userId],
+            'ii'
+        );
+        
+        if ($existing) {
+            return true; // Already a stakeholder
+        }
+        
+        $query = "INSERT INTO surat_stakeholders (surat_id, user_id, role_type, assigned_by, assigned_at, is_active) 
+                  VALUES (?, ?, ?, ?, NOW(), 1)";
+        
+        $params = [$suratId, $userId, $roleType, $assignedBy];
+        $types = 'iisi';
+        
+        return dbExecute($query, $params, $types);
+    }
+    
+    /**
+     * Get all stakeholders for a surat
+     */
+    public static function getStakeholders($suratId) {
+        $query = "SELECT ss.*, u.nama_lengkap, u.email, r.nama_role
+                  FROM surat_stakeholders ss
+                  JOIN users u ON ss.user_id = u.id
+                  JOIN roles r ON u.id_role = r.id
+                  WHERE ss.surat_id = ?
+                  ORDER BY ss.assigned_at ASC";
+        
+        return dbSelect($query, [$suratId], 'i');
+    }
+    
+    /**
+     * Check if user is stakeholder of a surat
+     */
+    public static function isStakeholder($suratId, $userId) {
+        $result = dbSelectOne(
+            "SELECT id FROM surat_stakeholders WHERE surat_id = ? AND user_id = ? AND is_active = 1",
+            [$suratId, $userId],
+            'ii'
+        );
+        
+        return $result !== null;
+    }
+    
+    /**
+     * Deactivate all stakeholders when surat is completed
+     */
+    public static function deactivateStakeholders($suratId) {
+        $query = "UPDATE surat_stakeholders SET is_active = 0 WHERE surat_id = ?";
+        return dbExecute($query, [$suratId], 'i');
+    }
+
+    // ==========================================
+    // GET ALL DISPOSISI - DENGAN FILTER STAKEHOLDER
     // ==========================================
 
-    // Get all disposisi with filters
+    /**
+     * Get all disposisi with filters
+     * Support filter by stakeholder untuk inbox/monitoring
+     */
     public static function getAll($filters = [], $limit = 10, $offset = 0) {
         $params = [];
         $types = '';
@@ -33,7 +99,7 @@ class DisposisiService {
             $types .= 's';
         }
         
-        // Filter by user (inbox/outbox)
+        // Filter by user (inbox/outbox) - LEGACY
         if (!empty($filters['ke_user_id'])) {
             $query .= " AND d.ke_user_id = ?";
             $params[] = $filters['ke_user_id'];
@@ -55,11 +121,12 @@ class DisposisiService {
         
         // Search
         if (!empty($filters['search'])) {
-            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ?)";
+            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.nomor_agenda LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params[] = $searchTerm;
             $params[] = $searchTerm;
-            $types .= 'ss';
+            $params[] = $searchTerm;
+            $types .= 'sss';
         }
         
         $query .= " ORDER BY d.tanggal_disposisi DESC LIMIT ? OFFSET ?";
@@ -69,6 +136,218 @@ class DisposisiService {
         
         return dbSelect($query, $params, $types);
     }
+    
+    /**
+     * Get disposisi untuk INBOX berdasarkan stakeholder
+     * Surat akan tetap muncul meskipun sudah didelegasikan
+     */
+    public static function getInboxByStakeholder($userId, $filters = [], $limit = 10, $offset = 0) {
+        $params = [$userId];
+        $types = 'i';
+        
+        $query = "SELECT DISTINCT d.*, 
+                         s.nomor_agenda, s.nomor_surat, s.perihal, s.status_surat,
+                         js.nama_jenis,
+                         u1.nama_lengkap as dari_user_nama,
+                         u2.nama_lengkap as ke_user_nama,
+                         ss.role_type as stakeholder_role
+                  FROM disposisi d
+                  JOIN surat s ON d.id_surat = s.id
+                  JOIN jenis_surat js ON s.id_jenis = js.id
+                  JOIN users u1 ON d.dari_user_id = u1.id
+                  JOIN users u2 ON d.ke_user_id = u2.id
+                  JOIN surat_stakeholders ss ON ss.surat_id = s.id AND ss.user_id = ?
+                  WHERE d.ke_user_id = ? OR ss.user_id = ?";
+        
+        $params[] = $userId;
+        $params[] = $userId;
+        $types .= 'ii';
+        
+        // Filter by status
+        if (!empty($filters['status_disposisi'])) {
+            $query .= " AND d.status_disposisi = ?";
+            $params[] = $filters['status_disposisi'];
+            $types .= 's';
+        }
+        
+        // Search
+        if (!empty($filters['search'])) {
+            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.nomor_agenda LIKE ?)";
+            $searchTerm = '%' . $filters['search'] . '%';
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $types .= 'sss';
+        }
+        
+        // Exclude completed/archived unless specifically requested
+        if (empty($filters['include_completed'])) {
+            $query .= " AND s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')";
+        }
+        
+        $query .= " ORDER BY d.tanggal_disposisi DESC LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        $types .= 'ii';
+        
+        return dbSelect($query, $params, $types);
+    }
+    
+    /**
+     * Count inbox by stakeholder
+     */
+    public static function countInboxByStakeholder($userId, $filters = []) {
+        $params = [$userId];
+        $types = 'i';
+        
+        $query = "SELECT COUNT(DISTINCT d.id) as total
+                  FROM disposisi d
+                  JOIN surat s ON d.id_surat = s.id
+                  JOIN surat_stakeholders ss ON ss.surat_id = s.id AND ss.user_id = ?
+                  WHERE d.ke_user_id = ? OR ss.user_id = ?";
+        
+        $params[] = $userId;
+        $params[] = $userId;
+        $types .= 'ii';
+        
+        // Filter by status
+        if (!empty($filters['status_disposisi'])) {
+            $query .= " AND d.status_disposisi = ?";
+            $params[] = $filters['status_disposisi'];
+            $types .= 's';
+        }
+        
+        // Search
+        if (!empty($filters['search'])) {
+            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.nomor_agenda LIKE ?)";
+            $searchTerm = '%' . $filters['search'] . '%';
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $types .= 'sss';
+        }
+        
+        // Exclude completed/archived
+        if (empty($filters['include_completed'])) {
+            $query .= " AND s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')";
+        }
+        
+        $result = dbSelectOne($query, $params, $types);
+        return $result['total'] ?? 0;
+    }
+    
+    /**
+     * Get disposisi untuk MONITORING berdasarkan role
+     * - Superadmin: Semua disposisi
+     * - Karyawan: Surat yang dia terima + delegasi ke magang
+     * - Magang: Hanya surat yang dia tangani
+     */
+    public static function getForMonitoring($userId, $userRole, $filters = [], $limit = 10, $offset = 0) {
+        $params = [];
+        $types = '';
+        
+        $query = "SELECT DISTINCT d.*, 
+                         s.nomor_agenda, s.nomor_surat, s.perihal, s.status_surat,
+                         js.nama_jenis,
+                         u1.nama_lengkap as dari_user_nama,
+                         u2.nama_lengkap as ke_user_nama
+                  FROM disposisi d
+                  JOIN surat s ON d.id_surat = s.id
+                  JOIN jenis_surat js ON s.id_jenis = js.id
+                  JOIN users u1 ON d.dari_user_id = u1.id
+                  JOIN users u2 ON d.ke_user_id = u2.id";
+        
+        // Role-based filtering
+        if ($userRole == 1) {
+            // Superadmin: Lihat semua
+            $query .= " WHERE 1=1";
+        } elseif ($userRole == 2) {
+            // Karyawan: Surat yang dia terlibat sebagai stakeholder (termasuk delegasi ke magang)
+            $query .= " JOIN surat_stakeholders ss ON ss.surat_id = s.id
+                       WHERE ss.user_id = ?";
+            $params[] = $userId;
+            $types .= 'i';
+        } else {
+            // Magang: Hanya surat yang dia tangani langsung
+            $query .= " WHERE d.ke_user_id = ?";
+            $params[] = $userId;
+            $types .= 'i';
+        }
+        
+        // Filter by status
+        if (!empty($filters['status_disposisi'])) {
+            $query .= " AND d.status_disposisi = ?";
+            $params[] = $filters['status_disposisi'];
+            $types .= 's';
+        }
+        
+        // Search
+        if (!empty($filters['search'])) {
+            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.nomor_agenda LIKE ?)";
+            $searchTerm = '%' . $filters['search'] . '%';
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $types .= 'sss';
+        }
+        
+        $query .= " ORDER BY d.tanggal_disposisi DESC LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        $types .= 'ii';
+        
+        return dbSelect($query, $params, $types);
+    }
+    
+    /**
+     * Count untuk monitoring
+     */
+    public static function countForMonitoring($userId, $userRole, $filters = []) {
+        $params = [];
+        $types = '';
+        
+        $query = "SELECT COUNT(DISTINCT d.id) as total
+                  FROM disposisi d
+                  JOIN surat s ON d.id_surat = s.id";
+        
+        // Role-based filtering
+        if ($userRole == 1) {
+            $query .= " WHERE 1=1";
+        } elseif ($userRole == 2) {
+            $query .= " JOIN surat_stakeholders ss ON ss.surat_id = s.id
+                       WHERE ss.user_id = ?";
+            $params[] = $userId;
+            $types .= 'i';
+        } else {
+            $query .= " WHERE d.ke_user_id = ?";
+            $params[] = $userId;
+            $types .= 'i';
+        }
+        
+        // Filter by status
+        if (!empty($filters['status_disposisi'])) {
+            $query .= " AND d.status_disposisi = ?";
+            $params[] = $filters['status_disposisi'];
+            $types .= 's';
+        }
+        
+        // Search
+        if (!empty($filters['search'])) {
+            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.nomor_agenda LIKE ?)";
+            $searchTerm = '%' . $filters['search'] . '%';
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $types .= 'sss';
+        }
+        
+        $result = dbSelectOne($query, $params, $types);
+        return $result['total'] ?? 0;
+    }
+    
+    // ==========================================
+    // EXISTING METHODS
+    // ==========================================
     
     // Count disposisi
     public static function count($filters = []) {
@@ -105,11 +384,12 @@ class DisposisiService {
         }
         
         if (!empty($filters['search'])) {
-            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ?)";
+            $query .= " AND (s.nomor_surat LIKE ? OR s.perihal LIKE ? OR s.nomor_agenda LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params[] = $searchTerm;
             $params[] = $searchTerm;
-            $types .= 'ss';
+            $params[] = $searchTerm;
+            $types .= 'sss';
         }
         
         $result = dbSelectOne($query, $params, $types);
@@ -151,7 +431,7 @@ class DisposisiService {
         return dbSelect($query, [$suratId], 'i');
     }
     
-    // Create new disposisi (Basic - LEGACY, use createWithValidation instead)
+    // Create new disposisi with stakeholder tracking
     public static function create($data) {
         $query = "INSERT INTO disposisi (
                     id_surat, dari_user_id, ke_user_id, status_disposisi, catatan
@@ -168,10 +448,43 @@ class DisposisiService {
         $types = 'iiiss';
         
         $result = dbExecute($query, $params, $types);
-        return $result ? dbLastInsertId() : false;
+        
+        if ($result) {
+            $disposisiId = dbLastInsertId();
+            
+            // Determine role type for stakeholder
+            // Check if sender is already a stakeholder
+            $senderIsStakeholder = self::isStakeholder($data['id_surat'], $data['dari_user_id']);
+            
+            // If sender received this surat from someone else, receiver is delegasi
+            $roleType = 'penerima_utama';
+            if ($senderIsStakeholder) {
+                $senderRole = dbSelectOne(
+                    "SELECT role_type FROM surat_stakeholders WHERE surat_id = ? AND user_id = ?",
+                    [$data['id_surat'], $data['dari_user_id']],
+                    'ii'
+                );
+                if ($senderRole && $senderRole['role_type'] != 'pembuat') {
+                    $roleType = 'penerima_delegasi';
+                }
+            }
+            
+            // Add receiver as stakeholder
+            self::addStakeholder($data['id_surat'], $data['ke_user_id'], $roleType, $data['dari_user_id']);
+            
+            // Send notification
+            if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
+                require_once __DIR__ . '/../notifications/notification_service.php';
+                NotificationService::notifyDisposisiBaru($disposisiId);
+            }
+            
+            return $disposisiId;
+        }
+        
+        return false;
     }
     
-    // Update disposisi status (Basic - LEGACY, use updateStatusWithNotification instead)
+    // Update disposisi status
     public static function updateStatus($id, $status, $catatan = null) {
         $query = "UPDATE disposisi 
                   SET status_disposisi = ?, 
@@ -179,7 +492,58 @@ class DisposisiService {
                       tanggal_respon = CURRENT_TIMESTAMP
                   WHERE id = ?";
         
-        return dbExecute($query, [$status, $catatan, $id], 'ssi');
+        $result = dbExecute($query, [$status, $catatan, $id], 'ssi');
+        
+        if ($result) {
+            // Get disposisi info for notification
+            $disposisi = self::getById($id);
+            
+            if ($disposisi) {
+                // Send notification to sender
+                if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
+                    require_once __DIR__ . '/../notifications/notification_service.php';
+                    NotificationService::notifySuratUpdate($id, $status);
+                    
+                    // If completed or rejected, handle surat status and notifications
+                    if ($status === 'selesai' || $status === 'ditolak') {
+                        // Check if all disposisi are completed
+                        $allCompleted = self::checkAllDisposisiCompleted($disposisi['id_surat']);
+                        
+                        if ($allCompleted || $status === 'ditolak') {
+                            // Update surat status
+                            $suratStatus = ($status === 'selesai') ? 'disetujui' : 'ditolak';
+                            dbExecute(
+                                "UPDATE surat SET status_surat = ? WHERE id = ?",
+                                [$suratStatus, $disposisi['id_surat']],
+                                'si'
+                            );
+                            
+                            // Clear notifications and deactivate stakeholders
+                            NotificationService::clearBySurat($disposisi['id_surat']);
+                            NotificationService::deactivateStakeholders($disposisi['id_surat']);
+                            
+                            // Send completion notification
+                            if ($status === 'selesai') {
+                                NotificationService::notifySuratSelesai($disposisi['id_surat']);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Check if all disposisi for a surat are completed
+     */
+    public static function checkAllDisposisiCompleted($suratId) {
+        $query = "SELECT COUNT(*) as total FROM disposisi 
+                  WHERE id_surat = ? AND status_disposisi NOT IN ('selesai', 'ditolak')";
+        
+        $result = dbSelectOne($query, [$suratId], 'i');
+        return ($result['total'] ?? 0) == 0;
     }
     
     // Get inbox count by status
@@ -214,100 +578,87 @@ class DisposisiService {
         return $result['total'] ?? 0;
     }
     
+    // Get active disposisi count (untuk badge)
+    public static function getActiveInboxCount($userId) {
+        $query = "SELECT COUNT(DISTINCT d.id) as total 
+                  FROM disposisi d
+                  JOIN surat s ON d.id_surat = s.id
+                  JOIN surat_stakeholders ss ON ss.surat_id = s.id AND ss.user_id = ?
+                  WHERE ss.is_active = 1
+                  AND s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')
+                  AND (d.ke_user_id = ? OR ss.user_id = ?)";
+        
+        $result = dbSelectOne($query, [$userId, $userId, $userId], 'iii');
+        return $result['total'] ?? 0;
+    }
+    
     // Get statistics
     public static function getStatistics($userId = null) {
-        $stats = [];
+        $stats = [
+            'total' => 0,
+            'dikirim' => 0,
+            'diterima' => 0,
+            'diproses' => 0,
+            'selesai' => 0,
+            'ditolak' => 0
+        ];
+        
+        $query = "SELECT status_disposisi, COUNT(*) as total FROM disposisi";
+        $params = [];
+        $types = '';
         
         if ($userId) {
-            // User specific stats
-            $stats['inbox_total'] = self::getInboxCount($userId);
-            $stats['inbox_dikirim'] = self::getInboxCount($userId, 'dikirim');
-            $stats['inbox_diproses'] = self::getInboxCount($userId, 'diproses');
-            $stats['inbox_selesai'] = self::getInboxCount($userId, 'selesai');
-            
-            $stats['outbox_total'] = self::getOutboxCount($userId);
-            $stats['outbox_dikirim'] = self::getOutboxCount($userId, 'dikirim');
-            $stats['outbox_selesai'] = self::getOutboxCount($userId, 'selesai');
-        } else {
-            // Global stats
-            $query = "SELECT status_disposisi, COUNT(*) as total
-                      FROM disposisi
-                      GROUP BY status_disposisi";
-            $stats['by_status'] = dbSelect($query);
-            
-            $query = "SELECT COUNT(*) as total FROM disposisi";
-            $result = dbSelectOne($query);
-            $stats['total'] = $result['total'] ?? 0;
+            $query .= " WHERE ke_user_id = ? OR dari_user_id = ?";
+            $params = [$userId, $userId];
+            $types = 'ii';
+        }
+        
+        $query .= " GROUP BY status_disposisi";
+        
+        $results = dbSelect($query, $params, $types);
+        
+        foreach ($results as $row) {
+            $stats[$row['status_disposisi']] = $row['total'];
+            $stats['total'] += $row['total'];
         }
         
         return $stats;
     }
-    
-    // Check if user has PERMISSION to dispose surat (LEGACY - kept for backward compatibility)
-    public static function canDispose($userId, $suratId) {
-        // Get surat info
-        $query = "SELECT dibuat_oleh, status_surat FROM surat WHERE id = ?";
-        $surat = dbSelectOne($query, [$suratId], 'i');
-        
-        if (!$surat) {
-            return false;
-        }
-        
-        // Check if user is the creator or has received disposition
-        if ($surat['dibuat_oleh'] == $userId) {
-            return true;
-        }
-        
-        // Check if user has active disposition for this surat
-        $query = "SELECT id FROM disposisi 
-                  WHERE id_surat = ? AND ke_user_id = ? 
-                  AND status_disposisi IN ('diterima', 'diproses')
-                  LIMIT 1";
-        $disposition = dbSelectOne($query, [$suratId, $userId], 'ii');
-        
-        return $disposition !== null;
-    }
 
-    // ==========================================
-    // NEW METHODS - SISTEM NOTIFIKASI & 1 DISPOSISI ONLY
-    // ==========================================
-
-    /**
-     * Check apakah surat sudah pernah didisposisi dengan status aktif
-     * Return: null jika belum ada disposisi aktif, array disposisi jika ada
-     */
+    // Get active disposisi for a surat
     public static function getActiveDisposisi($suratId) {
-        $query = "SELECT d.*, u.nama_lengkap as ke_user_nama 
+        $query = "SELECT d.*, u.nama_lengkap as ke_user_nama
                   FROM disposisi d
-                  LEFT JOIN users u ON d.ke_user_id = u.id
+                  JOIN users u ON d.ke_user_id = u.id
                   WHERE d.id_surat = ? 
                   AND d.status_disposisi NOT IN ('ditolak')
-                  ORDER BY d.tanggal_disposisi DESC 
+                  ORDER BY d.tanggal_disposisi DESC
                   LIMIT 1";
         
         return dbSelectOne($query, [$suratId], 'i');
     }
-
-    /**
-     * Check apakah surat sudah pernah didisposisi (any status)
-     */
-    public static function hasBeenDisposed($suratId) {
-        $query = "SELECT COUNT(*) as total FROM disposisi WHERE id_surat = ?";
+    
+    // Check if surat has active disposisi
+    public static function hasActiveDisposisi($suratId) {
+        $query = "SELECT COUNT(*) as total FROM disposisi 
+                  WHERE id_surat = ? AND status_disposisi NOT IN ('ditolak', 'selesai')";
+        
         $result = dbSelectOne($query, [$suratId], 'i');
         return $result['total'] > 0;
     }
 
+    // Check if user can dispose surat
+    public static function canDispose($userId, $suratId) {
+        // User can dispose if they are a stakeholder
+        return self::isStakeholder($suratId, $userId);
+    }
+
     /**
-     * Check apakah surat bisa didisposisi (untuk UI - button state)
-     * Rules:
-     * - Jika belum pernah didisposisi: BOLEH
-     * - Jika sudah didisposisi tapi status 'ditolak': BOLEH (disposisi ulang)
-     * - Jika sudah ada disposisi aktif (dikirim/diterima/diproses/selesai): TIDAK BOLEH
+     * Check apakah surat bisa didisposisi
      */
     public static function checkSuratAvailability($suratId) {
         $activeDisposisi = self::getActiveDisposisi($suratId);
         
-        // Jika tidak ada disposisi aktif, boleh disposisi
         if (!$activeDisposisi) {
             return [
                 'can_dispose' => true,
@@ -315,187 +666,17 @@ class DisposisiService {
             ];
         }
         
-        // Jika ada disposisi aktif, tidak boleh disposisi lagi
         $userName = $activeDisposisi['ke_user_nama'] ?? 'User ID: ' . $activeDisposisi['ke_user_id'];
         
         return [
-            'can_dispose' => false,
-            'message' => 'Surat sudah didisposisi ke ' . $userName . ' dengan status: ' . ucfirst($activeDisposisi['status_disposisi']),
+            'can_dispose' => true, // Allow multiple disposisi
+            'message' => 'Surat dapat didisposisi',
             'existing_disposisi' => $activeDisposisi
         ];
     }
 
     /**
-     * Create disposisi BARU dengan Validasi & Notifikasi
-     * Ditambahkan validasi: hanya boleh 1 active disposisi
-     */
-    public static function createWithValidation($data) {
-        // Check apakah surat bisa didisposisi
-        $checkResult = self::checkSuratAvailability($data['id_surat']);
-        
-        if (!$checkResult['can_dispose']) {
-            return [
-                'success' => false,
-                'message' => $checkResult['message']
-            ];
-        }
-        
-        // Proceed dengan create disposisi normal
-        $query = "INSERT INTO disposisi (
-                    id_surat, dari_user_id, ke_user_id, status_disposisi, catatan, tanggal_disposisi
-                  ) VALUES (?, ?, ?, 'dikirim', ?, NOW())";
-        
-        $params = [
-            $data['id_surat'],
-            $data['dari_user_id'],
-            $data['ke_user_id'],
-            $data['catatan'] ?? ''
-        ];
-        
-        $result = dbExecute($query, $params, 'iiis');
-        
-        if ($result) {
-            $disposisiId = dbLastInsertId();
-            
-            // Update status surat jadi 'proses'
-            dbExecute(
-                "UPDATE surat SET status_surat = 'proses' WHERE id = ?",
-                [$data['id_surat']],
-                'i'
-            );
-            
-            // Kirim notifikasi ke user yang ditugaskan (anak magang)
-            if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
-                require_once __DIR__ . '/../notifications/notification_service.php';
-                NotificationService::notifyDisposisiBaru($disposisiId);
-                
-                // Jika pembuat surat adalah karyawan, kirim notif surat masuk ke karyawan lain
-                $creator = dbSelectOne(
-                    "SELECT dibuat_oleh FROM surat WHERE id = ?",
-                    [$data['id_surat']],
-                    'i'
-                );
-                
-                if ($creator) {
-                    NotificationService::notifySuratMasuk($data['id_surat'], $creator['dibuat_oleh']);
-                }
-            }
-            
-            return [
-                'success' => true,
-                'message' => 'Disposisi berhasil dibuat',
-                'disposisi_id' => $disposisiId
-            ];
-        }
-        
-        return [
-            'success' => false,
-            'message' => 'Gagal membuat disposisi'
-        ];
-    }
-
-    /**
-     * Update status disposisi dengan notifikasi
-     */
-    public static function updateStatusWithNotification($disposisiId, $newStatus, $userId) {
-        // Get disposisi data
-        $disposisi = dbSelectOne(
-            "SELECT * FROM disposisi WHERE id = ?",
-            [$disposisiId],
-            'i'
-        );
-        
-        if (!$disposisi) {
-            return ['success' => false, 'message' => 'Disposisi tidak ditemukan'];
-        }
-        
-        // Validasi: hanya user yang ditugaskan yang bisa update
-        if ($disposisi['ke_user_id'] != $userId) {
-            return ['success' => false, 'message' => 'Anda tidak memiliki akses untuk mengupdate disposisi ini'];
-        }
-        
-        // Update status
-        $query = "UPDATE disposisi 
-                  SET status_disposisi = ?, tanggal_respon = NOW() 
-                  WHERE id = ?";
-        
-        $result = dbExecute($query, [$newStatus, $disposisiId], 'si');
-        
-        if ($result) {
-            // Kirim notifikasi ke karyawan yang assign
-            if (file_exists(__DIR__ . '/../notifications/notification_service.php')) {
-                require_once __DIR__ . '/../notifications/notification_service.php';
-                NotificationService::notifySuratUpdate($disposisiId, $newStatus);
-                
-                // Jika status 'selesai', kirim notifikasi ke superadmin
-                if ($newStatus === 'selesai') {
-                    $surat = dbSelectOne(
-                        "SELECT id FROM surat WHERE id = ?",
-                        [$disposisi['id_surat']],
-                        'i'
-                    );
-                    
-                    if ($surat) {
-                        // Update status surat jadi 'disetujui'
-                        dbExecute(
-                            "UPDATE surat SET status_surat = 'disetujui' WHERE id = ?",
-                            [$surat['id']],
-                            'i'
-                        );
-                        
-                        NotificationService::notifySuratSelesai($surat['id']);
-                    }
-                }
-                
-                // Jika status 'ditolak', update status surat jadi 'ditolak'
-                if ($newStatus === 'ditolak') {
-                    dbExecute(
-                        "UPDATE surat SET status_surat = 'ditolak' WHERE id = ?",
-                        [$disposisi['id_surat']],
-                        'i'
-                    );
-                }
-            }
-            
-            return [
-                'success' => true,
-                'message' => 'Status disposisi berhasil diupdate'
-            ];
-        }
-        
-        return ['success' => false, 'message' => 'Gagal mengupdate status'];
-    }
-
-    /**
-     * Auto-accept disposisi saat user buka detail surat
-     * Dipanggil dari surat_detail.php
-     */
-    public static function autoAcceptDisposisi($suratId, $userId) {
-        // Cari disposisi yang ditujukan ke user ini dengan status 'dikirim'
-        $query = "SELECT id FROM disposisi 
-                  WHERE id_surat = ? 
-                  AND ke_user_id = ? 
-                  AND status_disposisi = 'dikirim'
-                  LIMIT 1";
-        
-        $disposisi = dbSelectOne($query, [$suratId, $userId], 'ii');
-        
-        if ($disposisi) {
-            // Update status jadi 'diterima'
-            dbExecute(
-                "UPDATE disposisi SET status_disposisi = 'diterima', tanggal_respon = NOW() WHERE id = ?",
-                [$disposisi['id']],
-                'i'
-            );
-            
-            return true;
-        }
-        
-        return false;
-    }
-
-    /**
-     * Get disposisi untuk surat tertentu (untuk ditampilkan di detail surat)
+     * Get disposisi untuk surat tertentu
      */
     public static function getForSurat($suratId) {
         $query = "SELECT d.*, 
@@ -509,5 +690,30 @@ class DisposisiService {
                   ORDER BY d.tanggal_disposisi DESC";
         
         return dbSelect($query, [$suratId], 'i');
+    }
+    
+    /**
+     * Auto-accept disposisi saat user buka detail surat
+     */
+    public static function autoAcceptDisposisi($suratId, $userId) {
+        $query = "SELECT id FROM disposisi 
+                  WHERE id_surat = ? 
+                  AND ke_user_id = ? 
+                  AND status_disposisi = 'dikirim'
+                  LIMIT 1";
+        
+        $disposisi = dbSelectOne($query, [$suratId, $userId], 'ii');
+        
+        if ($disposisi) {
+            dbExecute(
+                "UPDATE disposisi SET status_disposisi = 'diterima', tanggal_respon = NOW() WHERE id = ?",
+                [$disposisi['id']],
+                'i'
+            );
+            
+            return true;
+        }
+        
+        return false;
     }
 }

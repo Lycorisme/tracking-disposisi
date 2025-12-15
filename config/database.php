@@ -79,3 +79,9 @@ function dbExecute($query, $params = [], $types = '') {
         'insert_id' => $lastId
     ];
 }
+
+// Helper untuk mendapatkan last insert ID
+function dbLastInsertId() {
+    $conn = getConnection();
+    return $conn->insert_id;
+}

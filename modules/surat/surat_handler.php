@@ -26,7 +26,7 @@ try {
         case 'create':
             $data = [
                 'id_jenis' => $_POST['id_jenis'] ?? '',
-                'nomor_surat' => $_POST['nomor_surat'] ?? '', // Boleh kosong
+                'nomor_surat' => $_POST['nomor_surat'] ?? '',
                 'tanggal_surat' => $_POST['tanggal_surat'] ?? '',
                 'tanggal_diterima' => !empty($_POST['tanggal_diterima']) ? $_POST['tanggal_diterima'] : null,
                 'dari_instansi' => $_POST['dari_instansi'] ?? '',
@@ -37,7 +37,7 @@ try {
                 'lampiran_file' => null
             ];
 
-            // Validasi input wajib (Nomor Surat DIHAPUS dari validasi wajib)
+            // Validasi input wajib
             if (empty($data['id_jenis']) || empty($data['tanggal_surat']) || empty($data['perihal'])) {
                 throw new Exception("Mohon lengkapi data wajib (Jenis, Tanggal, Perihal)");
             }
@@ -125,6 +125,23 @@ try {
                 echo json_encode(['status' => 'success', 'message' => 'Surat berhasil diarsipkan']);
             } else {
                 throw new Exception("Gagal mengarsipkan surat");
+            }
+            break;
+            
+        case 'update_status':
+            $id = $_POST['id'] ?? 0;
+            $status = $_POST['status'] ?? '';
+            
+            if (!$id) throw new Exception("ID Surat tidak valid");
+            if (!in_array($status, ['baru', 'proses', 'disetujui', 'ditolak', 'arsip'])) {
+                throw new Exception("Status tidak valid");
+            }
+            
+            if (SuratService::updateStatus($id, $status)) {
+                logActivity($user['id'], 'update_status_surat', "Mengubah status surat ID: $id menjadi $status");
+                echo json_encode(['status' => 'success', 'message' => 'Status surat berhasil diubah']);
+            } else {
+                throw new Exception("Gagal mengubah status surat");
             }
             break;
 

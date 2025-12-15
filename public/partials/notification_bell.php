@@ -21,11 +21,9 @@ $unreadCount = NotificationService::countUnread($currentUser['id']);
         <i class="fas fa-bell text-xl"></i>
         
         <!-- Badge Unread Count -->
-        <?php if ($unreadCount > 0): ?>
-        <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+        <span id="notif-badge" class="<?= $unreadCount > 0 ? '' : 'hidden' ?> absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
             <?= $unreadCount > 9 ? '9+' : $unreadCount ?>
         </span>
-        <?php endif; ?>
     </button>
 </div>
 
@@ -38,7 +36,7 @@ $unreadCount = NotificationService::countUnread($currentUser['id']);
                 <i class="fas fa-bell text-primary-600"></i>
                 <h3 class="font-bold text-gray-800">Notifikasi</h3>
                 <span id="notif-count-text" class="text-xs text-gray-500">
-                    (<?= $unreadCount ?> belum dibaca)
+                    (<span id="notif-unread-number"><?= $unreadCount ?></span> belum dibaca)
                 </span>
             </div>
             <button onclick="closeNotificationModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
@@ -108,6 +106,10 @@ function loadNotifications() {
     loadingEl.classList.remove('hidden');
     emptyEl.classList.add('hidden');
     
+    // Clear existing notifications
+    const existingNotifs = listEl.querySelectorAll('.notif-item');
+    existingNotifs.forEach(el => el.remove());
+    
     fetch('<?= BASE_URL ?>/../modules/notifications/notification_handler.php?action=get_recent')
         .then(res => res.json())
         .then(data => {
@@ -120,10 +122,6 @@ function loadNotifications() {
                     emptyEl.classList.remove('hidden');
                     return;
                 }
-                
-                // Clear existing notifications (except loading/empty)
-                const existingNotifs = listEl.querySelectorAll('.notif-item');
-                existingNotifs.forEach(el => el.remove());
                 
                 // Render notifications
                 notifications.forEach(notif => {
@@ -215,6 +213,7 @@ function markAllAsRead() {
     .then(data => {
         if (data.status === 'success') {
             loadNotifications();
+            updateNotificationBadge(0);
         }
     });
 }
@@ -222,18 +221,15 @@ function markAllAsRead() {
 // Update notification badge
 function updateNotificationBadge(count) {
     const badge = document.getElementById('notif-badge');
-    const countText = document.getElementById('notif-count-text');
+    const countNumber = document.getElementById('notif-unread-number');
     
     if (count > 0) {
-        if (badge) {
-            badge.textContent = count > 9 ? '9+' : count;
-        }
-        if (countText) {
-            countText.textContent = `(${count} belum dibaca)`;
-        }
+        badge.classList.remove('hidden');
+        badge.textContent = count > 9 ? '9+' : count;
+        if (countNumber) countNumber.textContent = count;
     } else {
-        if (badge) badge.remove();
-        if (countText) countText.textContent = '(0 belum dibaca)';
+        badge.classList.add('hidden');
+        if (countNumber) countNumber.textContent = '0';
     }
 }
 
