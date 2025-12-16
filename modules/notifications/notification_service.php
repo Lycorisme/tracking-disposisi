@@ -28,7 +28,6 @@ class NotificationService {
     
     /**
      * Notifikasi: Disposisi baru diterima
-     * Dipanggil saat ada disposisi baru ke user
      */
     public static function notifyDisposisiBaru($disposisiId) {
         $query = "SELECT d.*, s.nomor_agenda, s.perihal,
@@ -56,15 +55,13 @@ class NotificationService {
     }
     
     /**
-     * Notifikasi: Surat masuk baru (untuk KARYAWAN)
-     * Dipanggil saat admin/karyawan create surat baru
+     * Notifikasi: Surat masuk baru
      */
     public static function notifySuratMasuk($suratId, $excludeUserId = null) {
         $query = "SELECT id, nomor_agenda, perihal FROM surat WHERE id = ?";
         $surat = dbSelectOne($query, [$suratId], 'i');
         
         if ($surat) {
-            // Ambil semua karyawan (role admin) kecuali yang buat surat
             $userQuery = "SELECT id FROM users 
                           WHERE id_role = 2 
                           AND status_aktif = 1";
@@ -94,7 +91,7 @@ class NotificationService {
     }
     
     /**
-     * Notifikasi: Update status dari user (untuk user yang assign)
+     * Notifikasi: Update status
      */
     public static function notifySuratUpdate($disposisiId, $newStatus) {
         $query = "SELECT d.*, s.nomor_agenda, s.perihal,
@@ -110,7 +107,7 @@ class NotificationService {
             $statusLabel = ucfirst($newStatus);
             
             self::create([
-                'user_id' => $disposisi['dari_user_id'], // Kirim ke yang assign
+                'user_id' => $disposisi['dari_user_id'],
                 'type' => 'surat_update',
                 'title' => "Status Surat: {$statusLabel}",
                 'message' => "{$disposisi['user_nama']} mengubah status surat {$disposisi['nomor_agenda']} menjadi: {$statusLabel}",
@@ -122,14 +119,14 @@ class NotificationService {
     }
     
     /**
-     * Notifikasi: Surat selesai/disetujui (untuk SUPERADMIN & Pembuat surat)
+     * Notifikasi: Surat selesai
      */
     public static function notifySuratSelesai($suratId) {
         $query = "SELECT nomor_agenda, perihal, dibuat_oleh FROM surat WHERE id = ?";
         $surat = dbSelectOne($query, [$suratId], 'i');
         
         if ($surat) {
-            // Kirim ke semua superadmin
+            // Kirim ke superadmin
             $superadmins = dbSelect(
                 "SELECT id FROM users WHERE id_role = 1 AND status_aktif = 1"
             );
@@ -139,13 +136,13 @@ class NotificationService {
                     'user_id' => $admin['id'],
                     'type' => 'surat_selesai',
                     'title' => '✅ Surat Disetujui',
-                    'message' => "Surat {$surat['nomor_agenda']} - {$surat['perihal']} telah selesai diproses dan disetujui",
+                    'message' => "Surat {$surat['nomor_agenda']} - {$surat['perihal']} telah selesai diproses",
                     'surat_id' => $suratId,
                     'url' => '/surat_detail.php?id=' . $suratId
                 ]);
             }
             
-            // Kirim ke pembuat surat jika bukan superadmin
+            // Kirim ke pembuat
             $pembuat = dbSelectOne(
                 "SELECT id, id_role FROM users WHERE id = ?",
                 [$surat['dibuat_oleh']],
@@ -157,7 +154,7 @@ class NotificationService {
                     'user_id' => $pembuat['id'],
                     'type' => 'surat_selesai',
                     'title' => '✅ Surat Anda Disetujui',
-                    'message' => "Surat {$surat['nomor_agenda']} - {$surat['perihal']} telah selesai diproses dan disetujui",
+                    'message' => "Surat {$surat['nomor_agenda']} telah disetujui",
                     'surat_id' => $suratId,
                     'url' => '/surat_detail.php?id=' . $suratId
                 ]);
@@ -166,9 +163,7 @@ class NotificationService {
     }
     
     /**
-     * ========== Get notifikasi dengan filter surat aktif ==========
-     * Notifikasi hanya muncul jika surat masih aktif (belum disetujui/ditolak/arsip)
-     * KECUALI notifikasi type 'surat_selesai' yang tetap ditampilkan
+     * Get recent notifications (filter surat aktif)
      */
     public static function getRecent($userId, $limit = 5) {
         $query = "SELECT n.*, s.status_surat 
@@ -187,8 +182,7 @@ class NotificationService {
     }
     
     /**
-     * ========== Count unread (hanya surat aktif) ==========
-     * PERBAIKAN: Gunakan counting yang sama seperti getRecent
+     * Count unread notifications
      */
     public static function countUnread($userId) {
         $query = "SELECT COUNT(*) as total 
@@ -207,24 +201,25 @@ class NotificationService {
     }
     
     /**
-     * ========== Count active notifications (untuk badge sidebar) ==========
-     * PERBAIKAN: Menghitung UNIQUE SURAT aktif dimana user adalah stakeholder
-     * Menggunakan DISTINCT untuk menghindari duplikasi karena multiple disposisi
+     * FIX: Count UNIQUE surat yang disposisi-nya masih aktif UNTUK SIDEBAR
+     * Kriteria Aktif:
+     * 1. Status Disposisi: dikirim, diterima, atau diproses
+     * 2. Status Surat: baru atau proses
      */
     public static function countActiveNotifications($userId) {
-        $query = "SELECT COUNT(DISTINCT ss.surat_id) as total
-                  FROM surat_stakeholders ss
-                  JOIN surat s ON ss.surat_id = s.id
-                  WHERE ss.user_id = ?
-                  AND ss.is_active = 1
-                  AND s.status_surat NOT IN ('disetujui', 'ditolak', 'arsip')";
+        $query = "SELECT COUNT(DISTINCT d.id_surat) as total
+                  FROM disposisi d
+                  JOIN surat s ON d.id_surat = s.id
+                  WHERE d.ke_user_id = ?
+                  AND d.status_disposisi IN ('dikirim', 'diterima', 'diproses')
+                  AND s.status_surat IN ('baru', 'proses')";
         
         $result = dbSelectOne($query, [$userId], 'i');
         return $result['total'] ?? 0;
     }
     
     /**
-     * Mark notification as read
+     * Mark as read
      */
     public static function markAsRead($notificationId, $userId) {
         $query = "UPDATE notifications 
@@ -246,14 +241,9 @@ class NotificationService {
     }
     
     /**
-     * ========== Clear/hapus notifikasi by surat_id ==========
-     * Dipanggil saat surat disetujui/ditolak/diarsipkan
-     * LOGIC: Mark semua notifikasi related ke surat ini jadi "read"
-     * KECUALI notifikasi type 'surat_selesai'
+     * Clear notifications by surat
      */
     public static function clearBySurat($suratId) {
-        // Mark all notifications related to this surat as read
-        // EXCEPT 'surat_selesai' notifications (keep them visible)
         $query = "UPDATE notifications 
                   SET is_read = 1, read_at = CURRENT_TIMESTAMP 
                   WHERE surat_id = ? 
@@ -264,8 +254,7 @@ class NotificationService {
     }
     
     /**
-     * ========== Deactivate stakeholders ==========
-     * Dipanggil saat surat selesai, set is_active = 0
+     * Deactivate stakeholders
      */
     public static function deactivateStakeholders($suratId) {
         $query = "UPDATE surat_stakeholders 
@@ -276,7 +265,7 @@ class NotificationService {
     }
     
     /**
-     * Delete old notifications (older than 30 days)
+     * Cleanup old notifications
      */
     public static function cleanup() {
         $query = "DELETE FROM notifications 

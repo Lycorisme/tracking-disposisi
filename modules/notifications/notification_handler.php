@@ -20,7 +20,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 try {
     switch ($action) {
-        // ========== Get recent notifications (filter surat aktif) ==========
+        // ========== Get recent notifications (Dropdown Lonceng) ==========
         case 'get_recent':
             $notifications = NotificationService::getRecent($user['id']);
             $unreadCount = NotificationService::countUnread($user['id']);
@@ -53,7 +53,7 @@ try {
             ]);
             break;
             
-        // ========== Count unread (untuk badge bell) ==========
+        // ========== Count unread (Badge Lonceng) ==========
         case 'count_unread':
             $count = NotificationService::countUnread($user['id']);
             
@@ -63,9 +63,10 @@ try {
             ]);
             break;
             
-        // ========== ACTION BARU: Count active (untuk badge sidebar) ==========
+        // ========== ACTION: Count active (Badge Sidebar - Disposisi Masuk) ==========
         case 'count_active':
-            // Count active surat yang user terlibat (untuk badge sidebar)
+            // Menghitung jumlah disposisi yang statusnya masih 'dikirim', 'diterima', atau 'diproses'
+            // DAN suratnya belum selesai.
             $count = NotificationService::countActiveNotifications($user['id']);
             
             echo json_encode([

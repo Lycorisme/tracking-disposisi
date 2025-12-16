@@ -128,7 +128,6 @@ try {
             }
             break;
             
-        // ========== UPDATE STATUS (dengan auto-clear notifications) ==========
         case 'update_status':
             $id = $_POST['id'] ?? 0;
             $status = $_POST['status'] ?? '';
@@ -138,41 +137,11 @@ try {
                 throw new Exception("Status tidak valid");
             }
             
-            // updateStatus() sudah otomatis clear notifications jika status final
             if (SuratService::updateStatus($id, $status)) {
                 logActivity($user['id'], 'update_status_surat', "Mengubah status surat ID: $id menjadi $status");
                 echo json_encode(['status' => 'success', 'message' => 'Status surat berhasil diubah']);
             } else {
                 throw new Exception("Gagal mengubah status surat");
-            }
-            break;
-            
-        // ========== ACTION BARU: REOPEN SURAT (ADMIN ONLY) ==========
-        case 'reopen':
-            // Hanya admin yang bisa reopen
-            if (!hasRole(['admin', 'superadmin'])) {
-                throw new Exception("Anda tidak memiliki akses untuk membuka kembali surat");
-            }
-            
-            $id = $_POST['id'] ?? 0;
-            if (!$id) throw new Exception("ID Surat tidak valid");
-            
-            $surat = SuratService::getById($id);
-            if (!$surat) throw new Exception("Surat tidak ditemukan");
-            
-            // Hanya bisa reopen surat yang sudah disetujui
-            if ($surat['status_surat'] !== 'disetujui') {
-                throw new Exception("Hanya surat yang sudah disetujui yang bisa dibuka kembali");
-            }
-            
-            if (SuratService::reopenSurat($id)) {
-                logActivity($user['id'], 'reopen_surat', "Membuka kembali surat ID: $id");
-                echo json_encode([
-                    'status' => 'success', 
-                    'message' => 'Surat berhasil dibuka kembali dan dapat didisposisi lagi'
-                ]);
-            } else {
-                throw new Exception("Gagal membuka kembali surat");
             }
             break;
 
@@ -183,3 +152,4 @@ try {
 } catch (Exception $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
+?>
