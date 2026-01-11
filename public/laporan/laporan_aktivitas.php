@@ -210,7 +210,7 @@ $userList = dbSelect("SELECT id, nama_lengkap FROM users WHERE status_aktif = 1 
                 
                 <!-- Pagination -->
                 <div class="print:hidden">
-                    <?= $pagination->render(BASE_URL . '/public/laporan/laporan_aktivitas.php', $_GET) ?>
+                    <?= $pagination->render(BASE_URL . '/laporan/laporan_aktivitas.php', $_GET) ?>
                 </div>
             </div>
             

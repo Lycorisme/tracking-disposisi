@@ -226,7 +226,7 @@ $suratList = dbSelect($query, $paramsQuery, $typesQuery);
                 
                 <!-- Pagination -->
                 <div class="bg-gray-50 border-t border-gray-200 print:hidden">
-                    <?= $pagination->render(BASE_URL . '/public/laporan/laporan_surat_masuk.php', $_GET) ?>
+                    <?= $pagination->render(BASE_URL . '/laporan/laporan_surat_masuk.php', $_GET) ?>
                 </div>
             </div>
             

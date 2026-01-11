@@ -165,8 +165,8 @@ function isGroupActive($pages) {
                         <i id="laporan-arrow" class="fas fa-chevron-down text-xs transition-transform duration-300"></i>
                     </button>
                     <div id="laporan-menu" class="mt-1 ml-6 space-y-1 pl-3 border-l-2 border-gray-200 hidden">
-                        <a href="<?= BASE_URL ?>/laporan/laporan_masuk.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_masuk.php') ?>">Surat Masuk</a>
-                        <a href="<?= BASE_URL ?>/laporan/laporan_keluar.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_keluar.php') ?>">Surat Keluar</a>
+                        <a href="<?= BASE_URL ?>/laporan/laporan_surat_masuk.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_surat_masuk.php') ?>">Surat Masuk</a>
+                        <a href="<?= BASE_URL ?>/laporan/laporan_surat_keluar.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_surat_keluar.php') ?>">Surat Keluar</a>
                         <a href="<?= BASE_URL ?>/laporan/laporan_proposal.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_proposal.php') ?>">Proposal</a>
                         <a href="<?= BASE_URL ?>/laporan/laporan_disposisi.php" class="block px-3 py-2 text-sm text-gray-600 rounded-md hover:text-primary-600 hover:bg-gray-50 <?= isActive('laporan_disposisi.php') ?>">Disposisi</a>
                         <?php if ($userRole == 1): ?>

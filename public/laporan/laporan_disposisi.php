@@ -251,7 +251,7 @@ $disposisiList = dbSelect($query, $params, $types);
 
                 <!-- Pagination -->
                 <div class="print:hidden">
-                    <?= $pagination->render(BASE_URL . '/public/laporan/laporan_disposisi.php', $_GET) ?>
+                    <?= $pagination->render(BASE_URL . '/laporan/laporan_disposisi.php', $_GET) ?>
                 </div>
             </div>
             
